@@ -1,0 +1,71 @@
+cabal-version:       2.4
+name:                budgetable
+version:             0.1.0.0
+
+library
+  exposed-modules:
+      Finance
+      DollarView
+      AccountView
+      BalancesView
+      ScheduledTransferView
+      FinancePlanView
+      DayView
+  hs-source-dirs:      src
+  build-depends:
+      base ^>=4.12.0.0
+    , Shpadoinkle
+    , Shpadoinkle-console
+    , Shpadoinkle-html
+    , Shpadoinkle-lens
+    , attoparsec
+    , containers
+    , deepseq
+    , generic-lens
+    , jsaddle
+    , lens == 4.17.1
+    , text
+    , time == 1.8.0.2
+    
+
+executable budgetable-app
+  main-is:             Main.hs
+  build-depends:
+      base ^>=4.12.0.0
+    , budgetable
+    , Shpadoinkle
+    , Shpadoinkle-backend-snabbdom
+    , Shpadoinkle-html
+    , Shpadoinkle-lens
+    , attoparsec
+    , containers
+    , deepseq
+    , generic-lens
+    , jsaddle
+    , lens == 4.17.1
+    , text
+    , time == 1.8.0.2
+  hs-source-dirs:      app
+  default-language:    Haskell2010
+  ghc-options:
+    -Wall
+    -Werror
+    -Wcompat
+    -fwarn-redundant-constraints
+    -fwarn-incomplete-uni-patterns
+    -fwarn-tabs
+    -fwarn-incomplete-record-updates
+    -fwarn-identities
+  ghcjs-options:
+    -Wall
+    -Werror
+    -Wcompat
+    -fno-warn-missing-home-modules
+    -fwarn-redundant-constraints
+    -fwarn-incomplete-uni-patterns
+    -fwarn-tabs
+    -fwarn-incomplete-record-updates
+    -fwarn-identities
+    -O2
+
+
