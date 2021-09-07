@@ -79,6 +79,8 @@ Please see the [BUILDING.md](./BUILDING.md) file for details.
 
 Contributions are very welcome! Please feel free to [file issues](https://github.com/budgetable/budgetable.github.io/issues), or submit merge requests!
 
+Budgetable was built with the great-and-powerful [Shpadoinkle](https://shpadoinkle.org), [Chart.js](https://chartjs.org), and [Bootstrap](https://getbootstrap.com).
+
 ----------------------
 
 ## License
