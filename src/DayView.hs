@@ -1,15 +1,17 @@
-{-# LANGUAGE
-    OverloadedStrings
-  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module DayView where
 
-import Shpadoinkle (Html, text)
-import Shpadoinkle.Html (input', type', step, placeholder, value, onInput, option, select, selected, onOption)
+import           Prelude            hiding (div)
+import           Shpadoinkle        (Html, text)
+import           Shpadoinkle.Html   (className, div, input', onInput, onOption,
+                                     option, placeholder, select, selected,
+                                     step, type', value)
 
-import Data.Time.Calendar (Day, toGregorian, fromGregorian, gregorianMonthLength)
-import qualified Data.Text as T
-import Text.Read (readMaybe)
+import qualified Data.Text          as T
+import           Data.Time.Calendar (Day, fromGregorian, gregorianMonthLength,
+                                     toGregorian)
+import           Text.Read          (readMaybe)
 
 
 data MonthPicker
@@ -55,9 +57,10 @@ unsafeValueToMonthPicker x = case x of
   11 -> Nov
   12 -> Dec
 
-dayEdit :: Day -> [Html m Day]
-dayEdit day =
-  [ let changedYear t oldDay =
+dayEdit :: Day -> Html m Day
+dayEdit day = div [className "row"]
+  [ div [className "col"] . (: []) $
+    let changedYear t oldDay =
           let (_,mOld,dOld) = toGregorian oldDay
           in  case readMaybe $ T.unpack t of
             Nothing -> oldDay -- FIXME warn year parsing
@@ -68,8 +71,10 @@ dayEdit day =
           , placeholder "year"
           , value . T.pack $ show y
           , onInput changedYear
+          , className "form-control"
           ]
-  , let mkMonth :: MonthPicker -> Html m Day
+  , div [className "col"] . (: []) $
+    let mkMonth :: MonthPicker -> Html m Day
         mkMonth m' =
           let shownM = T.pack $ show m'
           in  option [value shownM, selected (monthPickerValue m' == m)] [text shownM]
@@ -79,8 +84,10 @@ dayEdit day =
     in  select
           [ value . T.pack . show $ unsafeValueToMonthPicker m
           , onOption changedMonth
+          , className "form-select"
           ] (mkMonth <$> [minBound .. maxBound])
-  , let mkDay d' =
+  , div [className "col"] . (: []) $
+    let mkDay d' =
           let shownD = T.pack $ show d'
           in  option [value shownD, selected (d' == d)] [text shownD]
         changedDay t oldDay =
@@ -89,6 +96,7 @@ dayEdit day =
     in  select
           [ value . T.pack $ show d
           , onOption changedDay
+          , className "form-select"
           ] (mkDay <$> [1 .. gregorianMonthLength y m])
   ]
   where

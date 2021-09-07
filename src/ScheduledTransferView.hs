@@ -1,29 +1,36 @@
-{-# LANGUAGE
-    OverloadedLabels
-  , OverloadedStrings
-  , RankNTypes
-  , ScopedTypeVariables
-  #-}
+{-# LANGUAGE OverloadedLabels    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module ScheduledTransferView where
 
-import Finance (ScheduledTransfer (..), RepeatingTransfer (..), DayOfWeek (Sun), prettyPrintDayOfWeek, isRepeating)
-import DayView (dayEdit)
+import           DayView                     (dayEdit)
+import           Finance                     (DayOfWeek (Sun),
+                                              RepeatingTransfer (..),
+                                              ScheduledTransfer (..),
+                                              isRepeating, prettyPrintDayOfWeek)
 
-import Prelude hiding (max, min)
-import Shpadoinkle (Html, text, RawNode (..), listenRaw)
-import Shpadoinkle.Html (option, select, onOption, input', type', value, placeholder, step,
-                         onInput, max, min, br'_, onCheckM, checked, selected)
-import Shpadoinkle.Lens (onSum)
-import Shpadoinkle.Continuation (done, pur)
+import           Prelude                     hiding (div, max, min)
+import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
+                                              text)
+import           Shpadoinkle.Continuation    (done, pur)
+import           Shpadoinkle.Html            (br'_, checked, className, div,
+                                              input', label, label_, max, min,
+                                              onCheckM, onInput, onOption,
+                                              option, placeholder, select,
+                                              selected, step, type', value)
+import           Shpadoinkle.Lens            (onSum)
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Generics.Labels ()
-import qualified Data.Text as T
-import Data.Time.Calendar (Day, toGregorian, fromGregorian, gregorianMonthLength)
-import Data.Time.Clock (getCurrentTime, utctDay)
-import Text.Read (readMaybe)
-import Language.Javascript.JSaddle (makeObject, unsafeGetProp, fromJSValUnchecked)
+import           Control.Monad.IO.Class      (MonadIO (liftIO))
+import           Data.Generics.Labels        ()
+import qualified Data.Text                   as T
+import           Data.Time.Calendar          (Day, fromGregorian,
+                                              gregorianMonthLength, toGregorian)
+import           Data.Time.Clock             (getCurrentTime, utctDay)
+import           Language.Javascript.JSaddle (fromJSValUnchecked, makeObject,
+                                              unsafeGetProp)
+import           Text.Read                   (readMaybe)
 
 
 data RepeatingTransferPicker
@@ -34,23 +41,24 @@ data RepeatingTransferPicker
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 repeatingToPicker :: RepeatingTransfer -> RepeatingTransferPicker
 repeatingToPicker r = case r of
-  RepeatingDaily -> PickerRepeatingDaily
-  RepeatingWeekly _ -> PickerRepeatingWeekly
+  RepeatingDaily     -> PickerRepeatingDaily
+  RepeatingWeekly _  -> PickerRepeatingWeekly
   RepeatingMonthly _ -> PickerRepeatingMonthly
-  RepeatingYearly _ -> PickerRepeatingYearly
+  RepeatingYearly _  -> PickerRepeatingYearly
 isRepeatingPickedDifferent :: RepeatingTransfer -> RepeatingTransferPicker -> Bool
 isRepeatingPickedDifferent r p = case (r,p) of
-  (RepeatingDaily, PickerRepeatingDaily) -> False
-  (RepeatingWeekly _, PickerRepeatingWeekly) -> False
+  (RepeatingDaily, PickerRepeatingDaily)       -> False
+  (RepeatingWeekly _, PickerRepeatingWeekly)   -> False
   (RepeatingMonthly _, PickerRepeatingMonthly) -> False
-  (RepeatingYearly _, PickerRepeatingYearly) -> False
-  _ -> True
+  (RepeatingYearly _, PickerRepeatingYearly)   -> False
+  _                                            -> True
 
 scheduledTransferEdit :: forall m. MonadIO m => ScheduledTransfer -> [Html m ScheduledTransfer]
 scheduledTransferEdit s =
-  [ "Repeating: "
-  , input' [type' "checkbox", checked (isRepeating s), onCheckM checkedRepeating]
-  , br'_
+  [ div [className "col-md-2"] . (: []) $ div [className "form-check"]
+    [ input' [type' "checkbox", checked (isRepeating s), onCheckM checkedRepeating, className "form-check-input"]
+    , label [className "form-check-label"] ["Is Repeating?"]
+    ]
   ] <> schedule
   where
     checkedRepeating :: Bool -> m (ScheduledTransfer -> ScheduledTransfer)
@@ -60,16 +68,17 @@ scheduledTransferEdit s =
         today <- utctDay <$> liftIO getCurrentTime
         pure . const $ DateTransfer today
     schedule = case s of
-      DateTransfer day -> map (onSum #_DateTransfer) (dayEdit day)
+      DateTransfer day ->
+        [div [className "col"] . (: []) $ onSum #_DateTransfer (dayEdit day)]
       RepeatingTransfer r ->
         let selectRepeat =
               let mkPicker :: RepeatingTransferPicker -> Html m ScheduledTransfer
-                  mkPicker p = option [value . T.pack $ show p]
+                  mkPicker p = option [value . T.pack $ show p, selected (p == repeatingToPicker r)]
                     [ case p of
-                        PickerRepeatingDaily -> "Repeating Daily"
-                        PickerRepeatingWeekly -> "Repeating Weekly"
+                        PickerRepeatingDaily   -> "Repeating Daily"
+                        PickerRepeatingWeekly  -> "Repeating Weekly"
                         PickerRepeatingMonthly -> "Repeating Monthly"
-                        PickerRepeatingYearly -> "Repeating Yearly"
+                        PickerRepeatingYearly  -> "Repeating Yearly"
                     ]
                   changePicker t oldT = case oldT of
                     DateTransfer _ -> oldT
@@ -77,65 +86,75 @@ scheduledTransferEdit s =
                       let p = read $ T.unpack t
                       in  if isRepeatingPickedDifferent r p
                       then RepeatingTransfer $ case p of
-                        PickerRepeatingDaily -> RepeatingDaily
-                        PickerRepeatingWeekly -> RepeatingWeekly Sun
+                        PickerRepeatingDaily   -> RepeatingDaily
+                        PickerRepeatingWeekly  -> RepeatingWeekly Sun
                         PickerRepeatingMonthly -> RepeatingMonthly 1
-                        PickerRepeatingYearly -> RepeatingYearly 1
+                        PickerRepeatingYearly  -> RepeatingYearly 1
                       else oldT
               in  select
                     [ value . T.pack . show $ repeatingToPicker r
                     , onOption changePicker
+                    , className "form-select"
                     ] (mkPicker <$> [minBound .. maxBound])
-        in  [ selectRepeat
-            , case r of
-                RepeatingDaily -> ""
-                RepeatingWeekly w ->
-                  let changeWeek t _ =
-                        let w' = read $ T.unpack t
-                        in  RepeatingTransfer $ RepeatingWeekly w'
-                      mkWeekday :: DayOfWeek -> Html m ScheduledTransfer
-                      mkWeekday w' =
-                        let shownW = T.pack $ show w'
-                        in  option [value shownW] [text shownW]
-                  in  select [value . T.pack $ show w, onOption changeWeek]
-                        (mkWeekday <$> [minBound .. maxBound])
-                RepeatingMonthly m ->
-                  input'
-                    [ type' "number"
-                    , min "1"
-                    , max "31"
-                    , step "1"
-                    , value . T.pack $ show m
-                    , listenRaw "blur" $ \(RawNode n) _ -> do
-                        o <- makeObject n
-                        v <- unsafeGetProp "value" o
-                        t <- fromJSValUnchecked v
-                        case readMaybe t of
-                          Nothing -> pure done
-                          Just m -> pure . pur $ const . RepeatingTransfer $ RepeatingMonthly m
-                    , onInput $ \t old -> case readMaybe $ T.unpack t of
-                        Nothing -> old
-                        Just new -> new
-                    ]
-                RepeatingYearly m ->
-                  input'
-                    [ type' "number"
-                    , min "1"
-                    , max "366"
-                    , step "1"
-                    , value . T.pack $ show m
-                    , listenRaw "blur" $ \(RawNode n) _ -> do
-                        o <- makeObject n
-                        v <- unsafeGetProp "value" o
-                        t <- fromJSValUnchecked v
-                        case readMaybe t of
-                          Nothing -> pure done
-                          Just y -> pure . pur $ const . RepeatingTransfer $ RepeatingMonthly y
-                    , onInput $ \t old -> case readMaybe $ T.unpack t of
-                        Nothing -> old
-                        Just new -> new
-                    ]
-            ]
+        in  [div [className "col"] [selectRepeat]]
+            <> ( case r of
+                    RepeatingDaily -> []
+                    RepeatingWeekly w ->
+                      let changeWeek t _ =
+                            let w' = read $ T.unpack t
+                            in  RepeatingTransfer $ RepeatingWeekly w'
+                          mkWeekday :: DayOfWeek -> Html m ScheduledTransfer
+                          mkWeekday w' =
+                            let shownW = T.pack $ show w'
+                            in  option [value shownW, selected (w' == w)] [text shownW]
+                      in  [ div [className "col"] . (: []) $ select
+                              [ value . T.pack $ show w
+                              , onOption changeWeek
+                              , className "form-select"
+                              ]
+                              (mkWeekday <$> [minBound .. maxBound])
+                          ]
+                    RepeatingMonthly m ->
+                      [ div [className "col"] . (: []) $ input'
+                        [ type' "number"
+                        , min "1"
+                        , max "31"
+                        , step "1"
+                        , value . T.pack $ show m
+                        , listenRaw "blur" $ \(RawNode n) _ -> do
+                            o <- makeObject n
+                            v <- unsafeGetProp "value" o
+                            t <- fromJSValUnchecked v
+                            case readMaybe t of
+                              Nothing -> pure done
+                              Just m -> pure . pur $ const . RepeatingTransfer $ RepeatingMonthly m
+                        , onInput $ \t old -> case readMaybe $ T.unpack t of
+                            Nothing  -> old
+                            Just new -> new
+                        , className "form-control"
+                        ]
+                      ]
+                    RepeatingYearly m ->
+                      [ div [className "col"] . (: []) $ input'
+                        [ type' "number"
+                        , min "1"
+                        , max "366"
+                        , step "1"
+                        , value . T.pack $ show m
+                        , listenRaw "blur" $ \(RawNode n) _ -> do
+                            o <- makeObject n
+                            v <- unsafeGetProp "value" o
+                            t <- fromJSValUnchecked v
+                            case readMaybe t of
+                              Nothing -> pure done
+                              Just y -> pure . pur $ const . RepeatingTransfer $ RepeatingMonthly y
+                        , onInput $ \t old -> case readMaybe $ T.unpack t of
+                            Nothing  -> old
+                            Just new -> new
+                        , className "form-control"
+                        ]
+                      ]
+               )
 
 scheduledTransferView :: ScheduledTransfer -> Html m a
 scheduledTransferView s = case s of

@@ -11,6 +11,8 @@ library
       ScheduledTransferView
       FinancePlanView
       DayView
+      Chart
+      Debouncer
   hs-source-dirs:      src
   build-depends:
       base ^>=4.12.0.0
@@ -18,6 +20,7 @@ library
     , Shpadoinkle-console
     , Shpadoinkle-html
     , Shpadoinkle-lens
+    , aeson
     , attoparsec
     , containers
     , deepseq
@@ -37,12 +40,14 @@ executable budgetable-app
     , Shpadoinkle-backend-snabbdom
     , Shpadoinkle-html
     , Shpadoinkle-lens
+    , aeson
     , attoparsec
     , containers
     , deepseq
     , generic-lens
     , jsaddle
     , lens == 4.17.1
+    , stm
     , text
     , time == 1.8.0.2
   hs-source-dirs:      app

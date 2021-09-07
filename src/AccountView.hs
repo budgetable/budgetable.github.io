@@ -1,35 +1,40 @@
-{-# LANGUAGE
-    OverloadedLabels
-  , OverloadedStrings
-  , RankNTypes
-  , ScopedTypeVariables
-  #-}
+{-# LANGUAGE OverloadedLabels    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module AccountView where
 
-import Finance (Account (..), AccountLimit (..))
+import           Finance              (Account (..), AccountLimit (..))
 
-import Prelude hiding (span)
-import Shpadoinkle (Html, text)
-import Shpadoinkle.Html (input', select, onInput, option, value, onOption, span, styleProp, placeholder)
-import Shpadoinkle.Lens (onRecord)
+import           Prelude              hiding (div, span)
+import           Shpadoinkle          (Html, text)
+import           Shpadoinkle.Html     (className, div, input', onInput,
+                                       onOption, option, placeholder, select,
+                                       selected, span, styleProp, value)
+import           Shpadoinkle.Lens     (onRecord)
 
-import Data.Generics.Labels ()
-import qualified Data.Text as T
+import           Data.Generics.Labels ()
+import qualified Data.Text            as T
 
 
 accountEdit :: forall m. Functor m => Account -> [Html m Account]
 accountEdit (Account name limit color) =
-  [ onRecord #accountName $ input'
+  [ div [className "col"] . (: []) $
+    onRecord #accountName $ input'
     [ value name
     , onInput $ const . id
     , placeholder "Account Name"
+    , className "form-control"
     ]
-  , onRecord #accountLimit $ accountLimitEdit limit
-  , onRecord #accountColor $ input'
+  , div [className "col"] . (: []) $
+    onRecord #accountLimit $ accountLimitEdit limit
+  , div [className "col"] . (: []) $
+    onRecord #accountColor $ input'
     [ value color
     , onInput $ const . id
     , placeholder "Color"
+    , className "form-control"
     ]
   ]
   where
@@ -38,14 +43,15 @@ accountEdit (Account name limit color) =
       select
         [ value . T.pack $ show l
         , onOption $ const . read . T.unpack
+        , className "form-select"
         ]
         (accountLimitOption <$> [minBound .. maxBound])
       where
-        accountLimitOption o = option [value . T.pack $ show o]
+        accountLimitOption o = option [value . T.pack $ show o, selected (o == l)]
           [ case o of
               NoRestriction -> "No Restriction"
-              OnlyPositive -> "Only Positive"
-              OnlyNegative -> "Only Negative"
+              OnlyPositive  -> "Only Positive"
+              OnlyNegative  -> "Only Negative"
           ]
 
 
@@ -54,5 +60,5 @@ accountView (Account name limit color) = span [styleProp [("background",color)]]
   where
     l = case limit of
       NoRestriction -> "&plusmn;"
-      OnlyPositive -> "&plus;"
-      OnlyNegative -> "&minus;"
+      OnlyPositive  -> "&plus;"
+      OnlyNegative  -> "&minus;"

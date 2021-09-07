@@ -1,29 +1,40 @@
-{-# LANGUAGE
-    OverloadedStrings
-  , OverloadedLabels
-  , RankNTypes
-  , ScopedTypeVariables
-  #-}
+{-# LANGUAGE OverloadedLabels    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module FinancePlanView where
 
-import Finance (FinancePlan (..), Transfer (..), Income (..), Cost (..), Account (..),
-                AccountLimit (NoRestriction), ScheduledTransfer (DateTransfer), blankAccount)
-import AccountView (accountView)
-import ScheduledTransferView (scheduledTransferView, scheduledTransferEdit)
-import DollarView (dollarView, dollarEdit)
+import           AccountView            (accountView)
+import           DollarView             (dollarEdit, dollarView)
+import           Finance                (Account (..),
+                                         AccountLimit (NoRestriction),
+                                         Cost (..), FinancePlan (..),
+                                         Income (..),
+                                         ScheduledTransfer (DateTransfer),
+                                         Transfer (..), blankAccount)
+import           ScheduledTransferView  (scheduledTransferEdit,
+                                         scheduledTransferView)
+import           Debouncer (Debouncer)
 
-import Shpadoinkle (Html, text)
-import Shpadoinkle.Html (table_, tr_, td_, th, textProperty', value, option, select, onOption, onOptionM,
-                         selected, hidden, disabled, input', styleProp, onInput, placeholder)
-import Shpadoinkle.Lens (onRecord, onSum)
+import           Prelude                hiding (div)
+import           Shpadoinkle            (Html, text, RawNode (..), listenRaw)
+import           Shpadoinkle.Html       (className, disabled, div, hidden,
+                                         input', label_, onInput, onOption,
+                                         onOptionM, option, placeholder, select,
+                                         selected, styleProp, table_, td_,
+                                         textProperty', th, tr_, value, debounceRaw)
+import           Shpadoinkle.Continuation (pur)
+import           Shpadoinkle.Lens       (onRecord, onSum)
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import qualified Data.Text as T
-import Data.Generics.Labels ()
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.Time.Clock (getCurrentTime, utctDay)
+import           Control.Monad.IO.Class (MonadIO (liftIO))
+import           Data.Generics.Labels   ()
+import           Data.Set               (Set)
+import qualified Data.Set               as Set
+import qualified Data.Text              as T
+import           Data.Time.Clock        (getCurrentTime, utctDay)
+import           Language.Javascript.JSaddle   (JSVal, toJSVal, fromJSValUnchecked, makeObject,
+                                                unsafeGetProp)
 
 
 data FinancePlanPicker
@@ -34,51 +45,155 @@ data FinancePlanPicker
 financePlanToPicker :: FinancePlan -> FinancePlanPicker
 financePlanToPicker f = case f of
   FinancePlanTransfer _ -> PickerFinancePlanTransfer
-  FinancePlanIncome _ -> PickerFinancePlanIncome
-  FinancePlanCost _ -> PickerFinancePlanCost
+  FinancePlanIncome _   -> PickerFinancePlanIncome
+  FinancePlanCost _     -> PickerFinancePlanCost
 isFinancePlanPickedDifferent :: FinancePlan -> FinancePlanPicker -> Bool
 isFinancePlanPickedDifferent f p = case (f,p) of
   (FinancePlanTransfer _, PickerFinancePlanTransfer) -> False
-  (FinancePlanIncome _, PickerFinancePlanIncome) -> False
-  (FinancePlanCost _, PickerFinancePlanCost) -> False
-  _ -> True
+  (FinancePlanIncome _, PickerFinancePlanIncome)     -> False
+  (FinancePlanCost _, PickerFinancePlanCost)         -> False
+  _                                                  -> True
 
 
-financePlanEdit :: forall m. MonadIO m => Set Account -> FinancePlan -> [Html m FinancePlan]
-financePlanEdit accounts f =
-  [ select
-    [ value . T.pack . show $ financePlanToPicker f
-    , onOptionM (pickedFinancePlan . read . T.unpack)
-    ] (mkFinancePicker <$> [minBound .. maxBound])
-  ] <>
-    ( case f of
-        FinancePlanTransfer t -> map (onSum #_FinancePlanTransfer) (transferEdit t)
-        FinancePlanIncome t   -> map (onSum #_FinancePlanIncome) (incomeEdit t)
-        FinancePlanCost t     -> map (onSum #_FinancePlanCost) (costEdit t)
-    )
+financePlanEdit :: forall m
+                 . MonadIO m
+                => Set Account
+                -> Debouncer m T.Text
+                -> FinancePlan
+                -> Html m FinancePlan
+financePlanEdit accounts debouncer f = div [className "row"] $ case f of
+  FinancePlanTransfer t ->
+    let (topR,midR,botR) = transferEdit t
+    in
+      [ div [className "row"] $
+        financePlanPicker : (map (onSum #_FinancePlanTransfer) topR)
+      , onSum #_FinancePlanTransfer midR
+      , onSum #_FinancePlanTransfer botR
+      ]
+  FinancePlanIncome t ->
+    let (topR,midR,botR) = incomeEdit t
+    in
+      [ div [className "row"] $
+        financePlanPicker : (map (onSum #_FinancePlanIncome) topR)
+      , onSum #_FinancePlanIncome midR
+      , onSum #_FinancePlanIncome botR
+      ]
+  FinancePlanCost t ->
+    let (topR,midR,botR) = costEdit t
+    in
+      [ div [className "row"] $
+        financePlanPicker : (map (onSum #_FinancePlanCost) topR)
+      , onSum #_FinancePlanCost midR
+      , onSum #_FinancePlanCost botR
+      ]
   where
-    transferEdit :: Transfer -> [Html m Transfer]
+    financePlanPicker :: Html m FinancePlan
+    financePlanPicker =
+      div [className "col"] . (: []) $ div [className "form-group"]
+        [ label_ ["Type:"]
+        , select
+          [ value . T.pack . show $ financePlanToPicker f
+          , onOptionM (pickedFinancePlan . read . T.unpack)
+          , className "form-control"
+          ] (mkFinancePicker <$> [minBound .. maxBound])
+        ]
+      where
+        mkFinancePicker :: FinancePlanPicker -> Html m FinancePlan
+        mkFinancePicker p =
+          option [value . T.pack $ show p, selected (p == financePlanToPicker f)]
+            [ case p of
+                PickerFinancePlanTransfer -> "Transfer"
+                PickerFinancePlanIncome   -> "Income"
+                PickerFinancePlanCost     -> "Cost"
+            ]
+        pickedFinancePlan :: FinancePlanPicker -> m (FinancePlan -> FinancePlan)
+        pickedFinancePlan p = do
+          today <- utctDay <$> liftIO getCurrentTime
+          pure $ \fOld ->
+            if isFinancePlanPickedDifferent fOld p
+            then case p of
+                  PickerFinancePlanTransfer ->
+                    FinancePlanTransfer $
+                      Transfer blankAccount blankAccount (DateTransfer today) 0 ""
+                  PickerFinancePlanIncome ->
+                    FinancePlanIncome $
+                      Income blankAccount (DateTransfer today) 0 ""
+                  PickerFinancePlanCost ->
+                    FinancePlanCost $
+                      Cost blankAccount (DateTransfer today) 0 ""
+            else fOld
+    transferEdit :: Transfer -> ([Html m Transfer], Html m Transfer, Html m Transfer)
     transferEdit (Transfer from to s v note) =
-      [ onRecord #transferFromAccount (accountPicker from)
-      , onRecord #transferToAccount (accountPicker to)
-      ] <> map (onRecord #transferSchedule) (scheduledTransferEdit s)
-        <> map (onRecord #transferValue) (dollarEdit v)
-        <> [onRecord #transferNote $ input' [value note, onInput (const . id), placeholder "Optional Note"]]
-    incomeEdit :: Income -> [Html m Income]
+      ( [ div [className "col"] . (: []) $ div [className "form-group"]
+          [ label_ ["From:"]
+          , onRecord #transferFromAccount (accountPicker from)
+          ]
+        , div [className "col"] . (: []) $ div [className "form-group"]
+          [ label_ ["To:"]
+          , onRecord #transferToAccount (accountPicker to)
+          ]
+        ]
+      , div [className "row"] $
+        map (onRecord #transferSchedule) (scheduledTransferEdit s)
+      , div [className "row"]
+        [ div [className "col"] . (: []) $
+          onRecord #transferValue (dollarEdit v)
+        , div [className "col"] . (: []) $
+          onRecord #transferNote $
+            input'
+              [ value note
+              -- , onInput (const . id)
+              , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+                  o <- makeObject n
+                  v <- unsafeGetProp "value" o
+                  t <- fromJSValUnchecked v
+                  pure . pur $ const t
+              , placeholder "Optional Note"
+              , className "form-control"
+              ]
+        ]
+      )
+    incomeEdit :: Income -> ([Html m Income], Html m Income, Html m Income)
     incomeEdit (Income a s v note) =
-      [onRecord #incomeAccount (accountPicker a)]
-      <> map (onRecord #incomeSchedule) (scheduledTransferEdit s)
-      <> map (onRecord #incomeValue) (dollarEdit v)
-      <> [onRecord #incomeNote $ input' [value note, onInput (const . id), placeholder "Optional Note"]]
-    costEdit :: Cost -> [Html m Cost]
+      ( [ div [className "col"] . (: []) $ div [className "form-group"]
+          [ label_ ["Account:"]
+          , onRecord #incomeAccount (accountPicker a)
+          ]
+        ]
+      , div [className "row"] $
+        map (onRecord #incomeSchedule) (scheduledTransferEdit s)
+      , div [className "row"]
+          [ div [className "col"] . (: []) $
+            onRecord #incomeValue (dollarEdit v)
+          , div [className "col"] . (: []) $
+            onRecord #incomeNote $
+            input' [value note, onInput (const . id), placeholder "Optional Note", className "form-control"]
+          ]
+      )
+    costEdit :: Cost -> ([Html m Cost], Html m Cost, Html m Cost)
     costEdit (Cost a s v note) =
-      [onRecord #costAccount (accountPicker a)]
-      <> map (onRecord #costSchedule) (scheduledTransferEdit s)
-      <> map (onRecord #costValue) (dollarEdit v)
-      <> [onRecord #costNote $ input' [value note, onInput (const . id), placeholder "Optional Note"]]
+      ( [ div [className "col"] . (: []) $ div [className "form-group"]
+          [ label_ ["Account:"]
+          , onRecord #costAccount (accountPicker a)
+          ]
+        ]
+      , div [className "row"] $
+        map (onRecord #costSchedule) (scheduledTransferEdit s)
+      , div [className "row"]
+          [ div [className "col"] . (: []) $
+            onRecord #costValue (dollarEdit v)
+          , div [className "col"] . (: []) $
+            onRecord #costNote $
+            input' [value note, onInput (const . id), placeholder "Optional Note", className "form-control"]
+          ]
+      )
     accountPicker :: Account -> Html m Account
     accountPicker a =
-      select [value . T.pack $ show a, onOption (const . read . T.unpack)] $
+      select
+        [ value . T.pack $ show a
+        , onOption (const . read . T.unpack)
+        , className "form-select"
+        ] $
         ( option
           [ value . T.pack $ show blankAccount
           , hidden True
@@ -91,30 +206,6 @@ financePlanEdit accounts f =
       where
         mkAccount a'@(Account name _ color) =
           option [value . T.pack $ show a', selected (a' == a), styleProp [("background",color)]] [text name]
-    mkFinancePicker :: FinancePlanPicker -> Html m FinancePlan
-    mkFinancePicker p =
-      option [value . T.pack $ show p]
-        [ case p of
-            PickerFinancePlanTransfer -> "Transfer"
-            PickerFinancePlanIncome -> "Income"
-            PickerFinancePlanCost -> "Cost"
-        ]
-    pickedFinancePlan :: FinancePlanPicker -> m (FinancePlan -> FinancePlan)
-    pickedFinancePlan p = do
-      today <- utctDay <$> liftIO getCurrentTime
-      pure $ \fOld ->
-        if isFinancePlanPickedDifferent fOld p
-        then case p of
-              PickerFinancePlanTransfer ->
-                FinancePlanTransfer $
-                  Transfer blankAccount blankAccount (DateTransfer today) 0 ""
-              PickerFinancePlanIncome ->
-                FinancePlanIncome $
-                  Income blankAccount (DateTransfer today) 0 ""
-              PickerFinancePlanCost ->
-                FinancePlanCost $
-                  Cost blankAccount (DateTransfer today) 0 ""
-        else fOld
 
 
 financePlanView :: FinancePlan -> Html m a

@@ -1,26 +1,27 @@
-{-# LANGUAGE
-    GeneralizedNewtypeDeriving
-  , MultiWayIf
-  , FlexibleInstances
-  , DeriveGeneric
-  , OverloadedStrings
-  #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiWayIf                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Finance where
 
-import           Control.DeepSeq             (NFData)
 import           Control.Applicative         ((<|>))
-import           Data.Time.Calendar          (Day, toGregorian, gregorianMonthLength, isLeapYear, addDays)
-import           Data.Time.Calendar.MonthDay (monthAndDayToDayOfYear)
-import           Data.Time.Calendar.WeekDate (toWeekDate)
-import           Data.Attoparsec.Text        (Parser, digit, char, many1, parseOnly)
+import           Control.DeepSeq             (NFData)
+import           Data.Attoparsec.Text        (Parser, char, digit, many1,
+                                              parseOnly)
+import           Data.Foldable               (foldl')
 import           Data.Map                    (Map)
 import qualified Data.Map                    as Map
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
-import           Data.Foldable               (foldl')
-import           Text.Read                   (Read (readsPrec))
+import           Data.Time.Calendar          (Day, addDays,
+                                              gregorianMonthLength, isLeapYear,
+                                              toGregorian)
+import           Data.Time.Calendar.MonthDay (monthAndDayToDayOfYear)
+import           Data.Time.Calendar.WeekDate (toWeekDate)
 import           GHC.Generics                (Generic)
+import           Text.Read                   (Read (readsPrec))
 
 
 data DayOfWeek = Sun | Mon | Tue | Wed | Thu | Fri | Sat
@@ -64,7 +65,7 @@ data ScheduledTransfer
 instance NFData ScheduledTransfer
 isRepeating :: ScheduledTransfer -> Bool
 isRepeating (RepeatingTransfer _) = True
-isRepeating _ = False
+isRepeating _                     = False
 
 class Schedulable a where
   isApplicableOn :: a -> Day -> Bool
@@ -110,18 +111,18 @@ outOfLimitError a@(Account name limit _) v
     NoRestriction -> Nothing
     OnlyPositive
       | v < 0 ->
-        Just $ "Account " <> T.pack (show name) <> " is OnlyPositive but has value of " <> T.pack (show v)
+        Just $ "Account " <> T.pack (show name) <> " is Only Positive but has value of $" <> dollarPrinter v
       | otherwise -> Nothing
     OnlyNegative
       | v > 0 ->
-        Just $ "Account " <> T.pack (show name) <> " is OnlyNegative but has value of " <> T.pack (show v)
+        Just $ "Account " <> T.pack (show name) <> " is Only Negative but has value of $" <> dollarPrinter v
       | otherwise -> Nothing
 
 addAccount :: Balances -> Account -> Dollar -> Either Text Balances
 addAccount acc a@(Account name limit _) v
   | Map.null (Map.filterWithKey (\a' _ -> accountName a' == name) acc) = case outOfLimitError a v of
       Nothing -> continue
-      Just e -> Left e
+      Just e  -> Left e
   | otherwise = Left $ "Account " <> T.pack (show name) <> " already exists in balances"
   where
     continue = pure $ Map.insert a v acc
@@ -202,13 +203,13 @@ instance NFData FinancePlan
 instance Schedulable FinancePlan where
   isApplicableOn f d = case f of
     FinancePlanTransfer x -> isApplicableOn x d
-    FinancePlanIncome x -> isApplicableOn x d
-    FinancePlanCost x -> isApplicableOn x d
+    FinancePlanIncome x   -> isApplicableOn x d
+    FinancePlanCost x     -> isApplicableOn x d
 instance ApplyTransaction FinancePlan where
   applyTransaction bs x = case x of
     FinancePlanTransfer y -> applyTransaction bs y
-    FinancePlanIncome y -> applyTransaction bs y
-    FinancePlanCost y -> applyTransaction bs y
+    FinancePlanIncome y   -> applyTransaction bs y
+    FinancePlanCost y     -> applyTransaction bs y
 
 -- | Money, in terms of cent (lossless compared to 'Double')
 newtype Cent = Cent {getCent :: Integer}
@@ -265,3 +266,7 @@ balancesOverTime today accounts financePlans =
             | f `isApplicableOn` today = applyTransaction acc f
             | otherwise = acc
       in  foldl' go accounts financePlans
+
+everyMonth :: [(Day, Balances)] -> [(Day, Balances)]
+everyMonth [] = []
+everyMonth (x:xs) = x : filter (\(d,_) -> let (_,_,d') = toGregorian d in d' == 1) xs
