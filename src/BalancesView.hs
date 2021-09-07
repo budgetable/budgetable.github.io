@@ -36,7 +36,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ (imap balanceEdit xs) <>
   ]
   where
     balanceEdit :: Int -> (Account, Dollar) -> Html m [(Account, Dollar)]
-    balanceEdit idx (a,v) = div [className "row"]
+    balanceEdit idx (a,v) = div [className "row account"]
       [ div [className "row g-2"] $
         (onSum (ix idx . _1) <$> accountEdit debouncer a)
         <>

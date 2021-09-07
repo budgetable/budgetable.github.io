@@ -168,7 +168,7 @@ view today debouncer (Model {..}) = div [className "container"] $
       ]
       where
         itemFinancePlansEdit :: Int -> FinancePlan -> Html m [FinancePlan]
-        itemFinancePlansEdit idx f = div [className "row"]
+        itemFinancePlansEdit idx f = div [className "row finance-plan"]
           [ div [className "col-xs-12 col-lg-11"] . (: []) $
             onSum (ix idx) (financePlanEdit (Map.keysSet balancesSaved) debouncer f)
           , div [className "col-xs-12 col-lg-1 d-grid", styleProp [("padding","0.5rem")]] . (: []) $
