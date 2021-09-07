@@ -11,15 +11,18 @@
 module Main where
 
 import           BalancesView                  (balancesEdit)
+import           Chart                         (ChartData (..),
+                                                InitialChart (..))
 import           DayView                       (dayEdit)
+import           Debouncer                     (Debouncer)
 import           Finance                       (Account (..), Balances, Dollar,
                                                 FinancePlan (FinancePlanTransfer),
                                                 ScheduledTransfer (DateTransfer),
                                                 Transfer (..), balancesOverTime,
-                                                blankAccount, mkBalances)
+                                                blankAccount, everyMonth,
+                                                everyWeek, everyYear,
+                                                mkBalances)
 import           FinancePlanView               (financePlanEdit)
-import           Chart                         (ChartData (..), InitialChart (..))
-import           Debouncer                     (Debouncer)
 
 import           Prelude                       hiding (div, min)
 import           Shpadoinkle                   (Html, JSM, MonadJSM,
@@ -27,11 +30,12 @@ import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 shpadoinkle, text)
 import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
-import           Shpadoinkle.Html              (button, canvas', className, div,
-                                                div_, h1_, h2_, h3_, height,
-                                                hr'_, id', input', min, onClick,
-                                                p_, step, styleProp,
-                                                type', value, width, debounceRaw)
+import           Shpadoinkle.Html              (button, canvas', className,
+                                                debounceRaw, div, h1_, h2_, h3_,
+                                                h4_, height, hr'_, id', input',
+                                                min, onClick, onOption, option,
+                                                p_, select, selected, step,
+                                                type', value, width, styleProp)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
@@ -52,11 +56,20 @@ import qualified Data.Text                     as T
 import           Data.Time.Calendar            (Day)
 import           Data.Time.Clock               (getCurrentTime, utctDay)
 import           GHC.Generics                  (Generic)
-import           Language.Javascript.JSaddle   (JSVal, toJSVal, fromJSValUnchecked, makeObject,
+import           Language.Javascript.JSaddle   (JSVal, fromJSValUnchecked,
+                                                makeObject, toJSVal,
                                                 unsafeGetProp)
 import           Text.Read                     (readMaybe)
 
 
+
+data ComputeBatchPicker
+  = PickerComputeDaily
+  | PickerComputeWeekly
+  | PickerComputeMonthly
+  | PickerComputeYearly
+  deriving (Eq, Ord, Show, Read, Generic, Enum, Bounded)
+instance NFData ComputeBatchPicker
 
 data Model = Model
   { balancesInEdit      :: [(Account, Dollar)]
@@ -64,12 +77,19 @@ data Model = Model
   , balancesSaved       :: Balances
   , startDate           :: Day
   , financePlans        :: [FinancePlan]
-  , daysToCompute       :: Int
+  , numberToCompute     :: Int
+  , computeBatch        :: ComputeBatchPicker
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
 
-daysComputed :: Model -> [(Day, Balances)]
-daysComputed Model{..} = take daysToCompute (balancesOverTime startDate balancesSaved financePlans)
+batchComputed :: Model -> [(Day, Balances)]
+batchComputed Model{..} = take numberToCompute $
+  let daysComputed = balancesOverTime startDate balancesSaved financePlans
+  in  case computeBatch of
+    PickerComputeDaily   -> daysComputed
+    PickerComputeWeekly  -> everyWeek daysComputed
+    PickerComputeMonthly -> everyMonth daysComputed
+    PickerComputeYearly  -> everyYear daysComputed
 
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
@@ -85,34 +105,51 @@ view :: forall m
 view today debouncer (Model {..}) = div [className "container"] $
   [ h1_ ["Budgetable"]
   , hr'_
-  , h3_ ["Start Date"]
-  , onRecord #startDate (dayEdit startDate)
-  , hr'_
   , h3_ ["Active Accounts"]
-  , onRecord #balancesInEdit $ balancesEdit balancesInEdit
-  , saveBalancesButton
+  , onRecord #balancesInEdit $ balancesEdit debouncer balancesInEdit
+  , div [className "row d-grid"]
+    [saveBalancesButton]
   , showBalancesError
   , hr'_
   , h3_ ["Finance Plans"]
   , onRecord #financePlans $ listOfFinancePlansEdit financePlans
   , hr'_
-  , h3_ ["Days to Compute"]
-  , input'
-    [ type' "number"
-    , step "1"
-    , min "0"
-    , value . T.pack $ show daysToCompute
-    , className "form-control"
-    , listenRaw "change" $ \(RawNode n) _ -> do
-        o <- makeObject n
-        v <- unsafeGetProp "value" o
-        t <- fromJSValUnchecked v
-        case readMaybe t of
-          Nothing      -> pure done
-          Just newDays -> pure . pur $ \m -> m {daysToCompute = newDays}
-    ]
-  , hr'_
   , h2_ ["Computed"]
+  , h4_ ["Start Date"]
+  , onRecord #startDate (dayEdit startDate)
+  , h4_ ["Interval"]
+  , div [className "row"]
+    [ div [className "col"] . (: []) $
+        select
+          [ className "form-select"
+          , value . T.pack $ show computeBatch
+          , onOption $ \t m -> let x = read $ T.unpack t in m { computeBatch = x }
+          ] $
+          let mkComputePicker :: ComputeBatchPicker -> Html m Model
+              mkComputePicker p = option [selected (p == computeBatch), value . T.pack $ show p]
+                [ case p of
+                    PickerComputeDaily   -> "Daily"
+                    PickerComputeWeekly  -> "Weekly"
+                    PickerComputeMonthly -> "Monthly"
+                    PickerComputeYearly  -> "Yearly"
+                ]
+          in  mkComputePicker <$> [minBound .. maxBound]
+    , div [className "col"] . (: []) $
+        input'
+          [ type' "number"
+          , step "1"
+          , min "0"
+          , value . T.pack $ show numberToCompute
+          , className "form-control"
+          , listenRaw "change" $ \(RawNode n) _ -> do
+              o <- makeObject n
+              v <- unsafeGetProp "value" o
+              t <- fromJSValUnchecked v
+              case readMaybe t of
+                Nothing      -> pure done
+                Just newDays -> pure . pur $ \m -> m {numberToCompute = newDays}
+          ]
+    ]
   , canvas' [id' "graphed-income", width 400, height 400]
   ]
   where
@@ -125,17 +162,19 @@ view today debouncer (Model {..}) = div [className "container"] $
           Left e   -> m {balancesInEditError = Just e}
           Right bs -> m {balancesInEditError = Nothing, balancesSaved = bs}
     listOfFinancePlansEdit :: [FinancePlan] -> Html m [FinancePlan]
-    listOfFinancePlansEdit fs = div_ $ (imap itemFinancePlansEdit fs) <> [newButton]
+    listOfFinancePlansEdit fs = div [id' "finance-plans"] $
+      (imap itemFinancePlansEdit fs) <>
+      [ div [className "row d-grid", styleProp [("padding-top","0.5rem")]] [newButton]
+      ]
       where
         itemFinancePlansEdit :: Int -> FinancePlan -> Html m [FinancePlan]
         itemFinancePlansEdit idx f = div [className "row"]
-          [ div [className "col-md-11"] . (: []) $
+          [ div [className "col-xs-12 col-lg-11"] . (: []) $
             onSum (ix idx) (financePlanEdit (Map.keysSet balancesSaved) debouncer f)
-          , div [className "col-md-1"] . (: []) $
+          , div [className "col-xs-12 col-lg-1 d-grid", styleProp [("padding","0.5rem")]] . (: []) $
             button
             [ onClick $ \xs -> take idx xs <> drop (idx + 1) xs
             , className "btn btn-secondary"
-            , styleProp [("margin-top","4rem")]
             ] ["Delete"]
           ]
         newButton :: Html m [FinancePlan]
@@ -153,7 +192,7 @@ view today debouncer (Model {..}) = div [className "container"] $
 app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
-  let emptyState = Model [] Nothing Map.empty today [] 0
+  let emptyState = Model [] Nothing Map.empty today [] 7 PickerComputeDaily
   initialState <- fromMaybe emptyState <$> getStorage "budgetable"
   model <- newTVarIO initialState
   debouncer <- debounceRaw 1
@@ -162,12 +201,12 @@ app = do
   threadDelay 1000
 
   context <- getContext
-  let initialChart = InitialChart . ChartData $ daysComputed initialState
+  let initialChart = InitialChart . ChartData $ batchComputed initialState
   chart <- newChart context =<< toJSVal (toJSON initialChart)
   let go () newState = do
         setStorage "budgetable" newState
         threadDelay 1000
-        let newChartData = ChartData (daysComputed newState)
+        let newChartData = ChartData (batchComputed newState)
         assignChartData chart =<< toJSVal (toJSON newChartData)
         updateChart chart
   void $ forkIO $ shouldUpdate go () model

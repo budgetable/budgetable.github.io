@@ -1,16 +1,15 @@
-{-# LANGUAGE
-    OverloadedStrings
-  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Chart where
 
-import Finance (Account (..), Balances, Dollar, dollarPrinter)
+import           Finance            (Account (..), Balances, Dollar,
+                                     dollarPrinter)
 
-import Data.Text (Text)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Aeson (ToJSON (..), object, (.=), Value (String))
-import Data.Time.Calendar (Day)
+import           Data.Aeson         (ToJSON (..), Value (String), object, (.=))
+import           Data.Map           (Map)
+import qualified Data.Map           as Map
+import           Data.Text          (Text)
+import           Data.Time.Calendar (Day)
 
 
 newtype InitialChart = InitialChart {getInitialChart :: ChartData}

@@ -79,7 +79,8 @@ instance Schedulable ScheduledTransfer where
         in  weekDay == dayOfWeekNum w
       RepeatingMonthly dayInMonth ->
         let (y,m,d) = toGregorian day
-        in  d == dayInMonth || gregorianMonthLength y m < dayInMonth
+            mLen = gregorianMonthLength y m
+        in  d == dayInMonth || (mLen < dayInMonth && d == mLen)
       RepeatingYearly dayInYear ->
         let (y,m,d) = toGregorian day
         in  dayInYear == monthAndDayToDayOfYear (isLeapYear y) m d
@@ -267,6 +268,15 @@ balancesOverTime today accounts financePlans =
             | otherwise = acc
       in  foldl' go accounts financePlans
 
+everyWeek :: [(Day, Balances)] -> [(Day, Balances)]
+everyWeek [] = []
+everyWeek (x:xs) = x : filter (\(d,_) -> let (_,_,w) = toWeekDate d in w == 7) xs
+
 everyMonth :: [(Day, Balances)] -> [(Day, Balances)]
 everyMonth [] = []
 everyMonth (x:xs) = x : filter (\(d,_) -> let (_,_,d') = toGregorian d in d' == 1) xs
+
+everyYear :: [(Day, Balances)] -> [(Day, Balances)]
+everyYear [] = []
+everyYear (x:xs) = x : filter (\(d,_) -> let (_,m,d') = toGregorian d in d' == 1 && m == 1) xs
+

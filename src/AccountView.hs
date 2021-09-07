@@ -5,37 +5,56 @@
 
 module AccountView where
 
-import           Finance              (Account (..), AccountLimit (..))
+import           Debouncer                   (Debouncer)
+import           Finance                     (Account (..), AccountLimit (..))
 
-import           Prelude              hiding (div, span)
-import           Shpadoinkle          (Html, text)
-import           Shpadoinkle.Html     (className, div, input', onInput,
-                                       onOption, option, placeholder, select,
-                                       selected, span, styleProp, value)
-import           Shpadoinkle.Lens     (onRecord)
+import           Prelude                     hiding (div, span)
+import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
+                                              text)
+import           Shpadoinkle.Continuation    (pur)
+import           Shpadoinkle.Html            (className, div, input', onInput,
+                                              onOption, option, placeholder,
+                                              select, selected, span, styleProp,
+                                              value)
+import           Shpadoinkle.Lens            (onRecord)
 
-import           Data.Generics.Labels ()
-import qualified Data.Text            as T
+import           Data.Generics.Labels        ()
+import qualified Data.Text                   as T
+import           Language.Javascript.JSaddle (JSVal, fromJSValUnchecked,
+                                              makeObject, toJSVal,
+                                              unsafeGetProp)
 
 
-accountEdit :: forall m. Functor m => Account -> [Html m Account]
-accountEdit (Account name limit color) =
-  [ div [className "col"] . (: []) $
+accountEdit :: forall m
+             . Functor m
+            => Debouncer m T.Text
+            -> Account
+            -> [Html m Account]
+accountEdit debouncer (Account name limit color) =
+  [ div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
     onRecord #accountName $ input'
-    [ value name
-    , onInput $ const . id
-    , placeholder "Account Name"
-    , className "form-control"
-    ]
-  , div [className "col"] . (: []) $
+      [ value name
+      , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+          o <- makeObject n
+          v <- unsafeGetProp "value" o
+          t <- fromJSValUnchecked v
+          pure . pur $ const t
+      , placeholder "Account Name"
+      , className "form-control"
+      ]
+  , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
     onRecord #accountLimit $ accountLimitEdit limit
-  , div [className "col"] . (: []) $
+  , div [className "col-xs-12 col-sm-4 col-lg-2"] . (: []) $
     onRecord #accountColor $ input'
-    [ value color
-    , onInput $ const . id
-    , placeholder "Color"
-    , className "form-control"
-    ]
+      [ value color
+      , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+          o <- makeObject n
+          v <- unsafeGetProp "value" o
+          t <- fromJSValUnchecked v
+          pure . pur $ const t
+      , placeholder "Color"
+      , className "form-control"
+      ]
   ]
   where
     accountLimitEdit :: AccountLimit -> Html m AccountLimit

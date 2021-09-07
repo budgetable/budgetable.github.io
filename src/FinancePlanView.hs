@@ -5,36 +5,39 @@
 
 module FinancePlanView where
 
-import           AccountView            (accountView)
-import           DollarView             (dollarEdit, dollarView)
-import           Finance                (Account (..),
-                                         AccountLimit (NoRestriction),
-                                         Cost (..), FinancePlan (..),
-                                         Income (..),
-                                         ScheduledTransfer (DateTransfer),
-                                         Transfer (..), blankAccount)
-import           ScheduledTransferView  (scheduledTransferEdit,
-                                         scheduledTransferView)
-import           Debouncer (Debouncer)
+import           AccountView                 (accountView)
+import           Debouncer                   (Debouncer)
+import           DollarView                  (dollarEdit, dollarView)
+import           Finance                     (Account (..),
+                                              AccountLimit (NoRestriction),
+                                              Cost (..), FinancePlan (..),
+                                              Income (..),
+                                              ScheduledTransfer (DateTransfer),
+                                              Transfer (..), blankAccount)
+import           ScheduledTransferView       (scheduledTransferEdit,
+                                              scheduledTransferView)
 
-import           Prelude                hiding (div)
-import           Shpadoinkle            (Html, text, RawNode (..), listenRaw)
-import           Shpadoinkle.Html       (className, disabled, div, hidden,
-                                         input', label_, onInput, onOption,
-                                         onOptionM, option, placeholder, select,
-                                         selected, styleProp, table_, td_,
-                                         textProperty', th, tr_, value, debounceRaw)
-import           Shpadoinkle.Continuation (pur)
-import           Shpadoinkle.Lens       (onRecord, onSum)
+import           Prelude                     hiding (div)
+import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
+                                              text)
+import           Shpadoinkle.Continuation    (pur)
+import           Shpadoinkle.Html            (className, debounceRaw, disabled,
+                                              div, hidden, input', label_,
+                                              onInput, onOption, onOptionM,
+                                              option, placeholder, select,
+                                              selected, styleProp, table_, td_,
+                                              textProperty', th, tr_, value)
+import           Shpadoinkle.Lens            (onRecord, onSum)
 
-import           Control.Monad.IO.Class (MonadIO (liftIO))
-import           Data.Generics.Labels   ()
-import           Data.Set               (Set)
-import qualified Data.Set               as Set
-import qualified Data.Text              as T
-import           Data.Time.Clock        (getCurrentTime, utctDay)
-import           Language.Javascript.JSaddle   (JSVal, toJSVal, fromJSValUnchecked, makeObject,
-                                                unsafeGetProp)
+import           Control.Monad.IO.Class      (MonadIO (liftIO))
+import           Data.Generics.Labels        ()
+import           Data.Set                    (Set)
+import qualified Data.Set                    as Set
+import qualified Data.Text                   as T
+import           Data.Time.Clock             (getCurrentTime, utctDay)
+import           Language.Javascript.JSaddle (JSVal, fromJSValUnchecked,
+                                              makeObject, toJSVal,
+                                              unsafeGetProp)
 
 
 data FinancePlanPicker
@@ -94,7 +97,7 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
         , select
           [ value . T.pack . show $ financePlanToPicker f
           , onOptionM (pickedFinancePlan . read . T.unpack)
-          , className "form-control"
+          , className "form-select"
           ] (mkFinancePicker <$> [minBound .. maxBound])
         ]
       where
@@ -142,7 +145,6 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
           onRecord #transferNote $
             input'
               [ value note
-              -- , onInput (const . id)
               , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
                   o <- makeObject n
                   v <- unsafeGetProp "value" o
@@ -167,7 +169,16 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
             onRecord #incomeValue (dollarEdit v)
           , div [className "col"] . (: []) $
             onRecord #incomeNote $
-            input' [value note, onInput (const . id), placeholder "Optional Note", className "form-control"]
+            input'
+              [ value note
+              , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+                  o <- makeObject n
+                  v <- unsafeGetProp "value" o
+                  t <- fromJSValUnchecked v
+                  pure . pur $ const t
+              , placeholder "Optional Note"
+              , className "form-control"
+              ]
           ]
       )
     costEdit :: Cost -> ([Html m Cost], Html m Cost, Html m Cost)
@@ -184,7 +195,16 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
             onRecord #costValue (dollarEdit v)
           , div [className "col"] . (: []) $
             onRecord #costNote $
-            input' [value note, onInput (const . id), placeholder "Optional Note", className "form-control"]
+            input'
+              [ value note
+              , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+                  o <- makeObject n
+                  v <- unsafeGetProp "value" o
+                  t <- fromJSValUnchecked v
+                  pure . pur $ const t
+              , placeholder "Optional Note"
+              , className "form-control"
+              ]
           ]
       )
     accountPicker :: Account -> Html m Account
