@@ -197,7 +197,9 @@ view today debouncer Model{..} = div [className "container"]
           ]
         newButton :: Html m [FinancePlan]
         newButton =
-          button [onClick (<> [blankFinancePlan]), className "btn btn-secondary"] ["Add New Finance Plan"]
+          button
+            [onClick (<> [blankFinancePlan]), className "btn btn-secondary"]
+            [text $ "Add New Finance Plan" <> if null fs then " (you don't have any)" else ""]
           where
             blankFinancePlan =
               FinancePlanTransfer $ Transfer

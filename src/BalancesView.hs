@@ -63,7 +63,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
         [ className "btn btn-secondary"
         , onClick (<> [(blankAccount, 0)])
         ]
-        ["Add New Account"]
+        [text $ "Add New Account" <> if null xs then " (you don't have any)" else ""]
 
 balancesView :: Balances -> Html m a
 balancesView bs = table_ $ balanceView <$> Map.toList bs
