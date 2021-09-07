@@ -13,6 +13,7 @@ import           Data.Attoparsec.Text        (Parser, char, digit, many1,
 import           Data.Foldable               (foldl')
 import           Data.Map                    (Map)
 import qualified Data.Map                    as Map
+import           Data.Maybe                  (maybe)
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
 import           Data.Time.Calendar          (Day, addDays,
@@ -121,9 +122,8 @@ outOfLimitError a@(Account name limit _) v
 
 addAccount :: Balances -> Account -> Dollar -> Either Text Balances
 addAccount acc a@(Account name limit _) v
-  | Map.null (Map.filterWithKey (\a' _ -> accountName a' == name) acc) = case outOfLimitError a v of
-      Nothing -> continue
-      Just e  -> Left e
+  | Map.null (Map.filterWithKey (\a' _ -> accountName a' == name) acc) =
+      maybe continue Left (outOfLimitError a v)
   | otherwise = Left $ "Account " <> T.pack (show name) <> " already exists in balances"
   where
     continue = pure $ Map.insert a v acc
@@ -153,8 +153,8 @@ instance ApplyTransaction Transfer where
     (Just fromBal, Just toBal)
       | accountLimit f == OnlyPositive && x > fromBal ->
         Map.insert f 0 . Map.insert t (toBal + fromBal) $ bs -- cannibalizes `from`
-      | accountLimit t == OnlyNegative && x > (negate toBal) ->
-        Map.insert f (fromBal - (negate toBal)) . Map.insert t 0 $ bs -- pays off `to`
+      | accountLimit t == OnlyNegative && x > negate toBal ->
+        Map.insert f (fromBal - negate toBal) . Map.insert t 0 $ bs -- pays off `to`
       | otherwise ->
         Map.insert f (fromBal - x) . Map.insert t (toBal + x) $ bs
     _ -> bs -- fail when non-existent
@@ -172,8 +172,8 @@ instance Schedulable Income where
 instance ApplyTransaction Income where
   applyTransaction bs (Income a _ x _) = case Map.lookup a bs of
     Just ys
-      | accountLimit a == OnlyNegative && x > (negate ys) ->
-        Map.insert (Account "__unclaimed_income" OnlyPositive "") (x - (negate ys)) . Map.insert a 0 $ bs
+      | accountLimit a == OnlyNegative && x > negate ys ->
+        Map.insert (Account "__unclaimed_income" OnlyPositive "") (x - negate ys) . Map.insert a 0 $ bs
       | otherwise -> Map.insert a (ys + x) bs
     Nothing -> bs
 

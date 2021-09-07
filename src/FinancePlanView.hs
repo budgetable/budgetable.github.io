@@ -69,7 +69,7 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
     let (topR,midR,botR) = transferEdit t
     in
       [ div [className "row"] $
-        financePlanPicker : (map (onSum #_FinancePlanTransfer) topR)
+        financePlanPicker : map (onSum #_FinancePlanTransfer) topR
       , onSum #_FinancePlanTransfer midR
       , onSum #_FinancePlanTransfer botR
       ]
@@ -77,7 +77,7 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
     let (topR,midR,botR) = incomeEdit t
     in
       [ div [className "row"] $
-        financePlanPicker : (map (onSum #_FinancePlanIncome) topR)
+        financePlanPicker : map (onSum #_FinancePlanIncome) topR
       , onSum #_FinancePlanIncome midR
       , onSum #_FinancePlanIncome botR
       ]
@@ -85,7 +85,7 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
     let (topR,midR,botR) = costEdit t
     in
       [ div [className "row"] $
-        financePlanPicker : (map (onSum #_FinancePlanCost) topR)
+        financePlanPicker : map (onSum #_FinancePlanCost) topR
       , onSum #_FinancePlanCost midR
       , onSum #_FinancePlanCost botR
       ]
@@ -214,15 +214,14 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
         , onOption (const . read . T.unpack)
         , className "form-select"
         ] $
-        ( option
+        option
           [ value . T.pack $ show blankAccount
           , hidden True
           , disabled True
           , selected (a == blankAccount)
           ]
           ["-- Select a saved Account --"]
-        )
-        : (mkAccount <$> Set.toList accounts)
+            : (mkAccount <$> Set.toList accounts)
       where
         mkAccount a'@(Account name _ color) =
           option [value . T.pack $ show a', selected (a' == a), styleProp [("background",color)]] [text name]

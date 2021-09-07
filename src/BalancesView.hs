@@ -15,8 +15,8 @@ import           Finance                  (Account (..),
 import           Prelude                  hiding (div)
 import           Shpadoinkle              (Html, MonadJSM, text)
 import           Shpadoinkle.Html         (button, className, div, div_, form_,
-                                           i, id', li_, onClick, span_, table_,
-                                           td_, tr_, ul_, styleProp)
+                                           i, id', li_, onClick, span_,
+                                           styleProp, table_, td_, tr_, ul_)
 import           Shpadoinkle.Lens         (onSum)
 
 import           Control.Lens.At          (ix)
@@ -31,7 +31,7 @@ balancesEdit :: forall m
              => Debouncer m Text
              -> [(Account, Dollar)]
              -> Html m [(Account, Dollar)]
-balancesEdit debouncer xs = div [id' "balances-edit"] $ (imap balanceEdit xs) <>
+balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
   [ div [className "row d-grid", styleProp [("padding","0.5rem 0")]] [newButton]
   ]
   where
@@ -53,12 +53,10 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ (imap balanceEdit xs) <>
           ]
         ]
       , div [className "row"] $
-          ( case outOfLimitError a v of
-              Nothing -> []
-              Just e  -> [span_ [text e]]
-          )
+          case outOfLimitError a v of
+            Nothing -> []
+            Just e  -> [span_ [text e]]
       ]
-      where
     newButton :: Html m [(Account, Dollar)]
     newButton =
       button

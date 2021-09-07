@@ -1,11 +1,9 @@
 {-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
 
 
 module Main where
@@ -30,12 +28,13 @@ import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 shpadoinkle, text)
 import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
-import           Shpadoinkle.Html              (button, canvas', className,
+import           Shpadoinkle.Html              (a, button, canvas', className,
                                                 debounceRaw, div, h1_, h2_, h3_,
-                                                h4_, height, hr'_, id', input',
-                                                min, onClick, onOption, option,
-                                                p_, select, selected, step,
-                                                type', value, width, styleProp)
+                                                h4_, height, hr'_, href, id',
+                                                input', min, onClick, onOption,
+                                                option, p, p_, select, selected,
+                                                step, styleProp, target, type',
+                                                value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
@@ -102,13 +101,12 @@ view :: forall m
      -> Debouncer m Text
      -> Model
      -> Html m Model
-view today debouncer (Model {..}) = div [className "container"] $
+view today debouncer Model{..} = div [className "container"]
   [ h1_ ["Budgetable"]
   , hr'_
   , h3_ ["Active Accounts"]
   , onRecord #balancesInEdit $ balancesEdit debouncer balancesInEdit
-  , div [className "row d-grid"]
-    [saveBalancesButton]
+  , div [className "row d-grid"] [saveBalancesButton]
   , showBalancesError
   , hr'_
   , h3_ ["Finance Plans"]
@@ -116,7 +114,7 @@ view today debouncer (Model {..}) = div [className "container"] $
   , hr'_
   , h2_ ["Computed"]
   , h4_ ["Start Date"]
-  , onRecord #startDate (dayEdit startDate)
+  , onRecord #startDate $ dayEdit startDate
   , h4_ ["Interval"]
   , div [className "row"]
     [ div [className "col"] . (: []) $
@@ -126,8 +124,8 @@ view today debouncer (Model {..}) = div [className "container"] $
           , onOption $ \t m -> let x = read $ T.unpack t in m { computeBatch = x }
           ] $
           let mkComputePicker :: ComputeBatchPicker -> Html m Model
-              mkComputePicker p = option [selected (p == computeBatch), value . T.pack $ show p]
-                [ case p of
+              mkComputePicker p' = option [selected (p' == computeBatch), value . T.pack $ show p']
+                [ case p' of
                     PickerComputeDaily   -> "Daily"
                     PickerComputeWeekly  -> "Weekly"
                     PickerComputeMonthly -> "Monthly"
@@ -151,6 +149,26 @@ view today debouncer (Model {..}) = div [className "container"] $
           ]
     ]
   , canvas' [id' "graphed-income", width 400, height 400]
+  , hr'_
+  , p [styleProp [("text-align","center")]]
+    [ "Budgetable is built with the great-and-powerful "
+    , a [href "https://shpadoinkle.org", target "_blank"] ["Shpadoinkle"]
+    , ", "
+    , a [href "https://chartjs.org", target "_blank"] ["Chart.js"]
+    , ", and "
+    , a [href "https://getbootstrap.com", target "_blank"] ["Bootstrap"]
+    , "."
+    ]
+  , p [styleProp [("text-align","center")]]
+    [ "It is Free Software released with NO WARRANTY, under the "
+    , a [href "https://www.gnu.org/licenses/gpl-3.0.en.html", target "_blank"] ["GNU GPL v3"]
+    , "."
+    ]
+  , p [styleProp [("text-align","center")]]
+    [ "Check us out on "
+    , a [href "https://github.com/budgetable/budgetable.github.io", target "_blank"] ["GitHub"]
+    , "!"
+    ]
   ]
   where
     showBalancesError = case balancesInEditError of
@@ -158,12 +176,12 @@ view today debouncer (Model {..}) = div [className "container"] $
       Just e  -> p_ [text e]
     saveBalancesButton = button [className "btn btn-primary", onClick saveBalances] ["Save Balances"]
       where
-        saveBalances m@(Model {balancesInEdit = inEdit}) = case mkBalances inEdit of
+        saveBalances m@Model{balancesInEdit = inEdit} = case mkBalances inEdit of
           Left e   -> m {balancesInEditError = Just e}
           Right bs -> m {balancesInEditError = Nothing, balancesSaved = bs}
     listOfFinancePlansEdit :: [FinancePlan] -> Html m [FinancePlan]
     listOfFinancePlansEdit fs = div [id' "finance-plans"] $
-      (imap itemFinancePlansEdit fs) <>
+      imap itemFinancePlansEdit fs <>
       [ div [className "row d-grid", styleProp [("padding-top","0.5rem")]] [newButton]
       ]
       where

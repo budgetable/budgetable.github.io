@@ -24,6 +24,7 @@ import           Shpadoinkle.Lens            (onSum)
 
 import           Control.Monad.IO.Class      (MonadIO (liftIO))
 import           Data.Generics.Labels        ()
+import           Data.Maybe                  (fromMaybe)
 import qualified Data.Text                   as T
 import           Data.Time.Calendar          (Day, fromGregorian,
                                               gregorianMonthLength, toGregorian)
@@ -62,11 +63,11 @@ scheduledTransferEdit s =
   ] <> schedule
   where
     checkedRepeating :: Bool -> m (ScheduledTransfer -> ScheduledTransfer)
-    checkedRepeating r = case r of
-      True -> pure . const $ RepeatingTransfer RepeatingDaily
-      False -> do
-        today <- utctDay <$> liftIO getCurrentTime
-        pure . const $ DateTransfer today
+    checkedRepeating r
+      | r = pure . const $ RepeatingTransfer RepeatingDaily
+      | otherwise = do
+          today <- utctDay <$> liftIO getCurrentTime
+          pure . const $ DateTransfer today
     schedule = case s of
       DateTransfer day ->
         [div [className "col"] . (: []) $ onSum #_DateTransfer (dayEdit day)]
@@ -128,9 +129,7 @@ scheduledTransferEdit s =
                             case readMaybe t of
                               Nothing -> pure done
                               Just m -> pure . pur $ const . RepeatingTransfer $ RepeatingMonthly m
-                        , onInput $ \t old -> case readMaybe $ T.unpack t of
-                            Nothing  -> old
-                            Just new -> new
+                        , onInput $ \t old -> fromMaybe old . readMaybe $ T.unpack t
                         , className "form-control"
                         ]
                       ]
@@ -148,9 +147,7 @@ scheduledTransferEdit s =
                             case readMaybe t of
                               Nothing -> pure done
                               Just y -> pure . pur $ const . RepeatingTransfer $ RepeatingMonthly y
-                        , onInput $ \t old -> case readMaybe $ T.unpack t of
-                            Nothing  -> old
-                            Just new -> new
+                        , onInput $ \t old -> fromMaybe old . readMaybe $ T.unpack t
                         , className "form-control"
                         ]
                       ]
