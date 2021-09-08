@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module DayView where
+module View.Day where
 
 import           Prelude            hiding (div)
 import           Shpadoinkle        (Html, text)

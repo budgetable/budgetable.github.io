@@ -88,18 +88,7 @@ let
           (filterSource
              (path: _:
                let pathP = replaceStrings [((getEnv "PWD") + "/")] [""] path; in
-               let first3 = substring 0 3 pathP; in
-               trace first3
-               ((first3 == "src" || first3 == "app") || l.hasSuffix ".cabal" path)
-             #   seq pathP (trace pathP
-             # (
-             #    baseNameOf path == "src"
-             #    # || baseNameOf path == "View"
-             #    || baseNameOf path == "app"
-             #    || l.hasSuffix ".hs" path
-             #    || l.hasSuffix ".cabal" path
-             # )
-             # )
+               l.hasPrefix "src" pathP || l.hasPrefix "app" pathP || l.hasSuffix ".cabal" path
              )
              ../.
           )

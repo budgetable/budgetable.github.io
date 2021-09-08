@@ -2,11 +2,11 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module BalancesView where
+module View.Balances where
 
-import           AccountView              (accountEdit, accountView)
+import           View.Account             (accountEdit, accountView)
+import           View.Dollar              (dollarEdit, dollarView)
 import           Debouncer                (Debouncer)
-import           DollarView               (dollarEdit, dollarView)
 import           Finance                  (Account (..),
                                            AccountLimit (NoRestriction),
                                            Balances, Dollar, blankAccount,
@@ -40,7 +40,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
       [ div [className "row g-2"] $
         (onSum (ix idx . _1) <$> accountEdit debouncer a)
         <>
-        [ div [className "col-xs-12 col-sm-4 col-lg-3"] . (: []) $ onSum (ix idx . _2) (dollarEdit v)
+        [ div [className "col-xs-12 col-sm-4 col-lg-3"] . (: []) $ onSum (ix idx . _2) (dollarEdit False v)
         , div
           [ className "col-xs-12 col-sm-4 col-lg-1 d-grid"
           , styleProp [("margin-top", "0"),("padding-bottom", "0.5rem")]

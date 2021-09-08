@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module AccountView where
+module View.Account where
 
 import           Debouncer                   (Debouncer)
 import           Finance                     (Account (..), AccountLimit (..))
