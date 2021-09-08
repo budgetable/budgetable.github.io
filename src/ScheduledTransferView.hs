@@ -71,7 +71,7 @@ scheduledTransferEdit s =
     schedule = case s of
       DateTransfer day ->
         [div [className "col"] . (: []) $ onSum #_DateTransfer (dayEdit day)]
-      RepeatingTransfer r ->
+      RepeatingTransfer r mLeftLimit mRightLimit ->
         let selectRepeat =
               let mkPicker :: RepeatingTransferPicker -> Html m ScheduledTransfer
                   mkPicker p = option [value . T.pack $ show p, selected (p == repeatingToPicker r)]
@@ -83,7 +83,7 @@ scheduledTransferEdit s =
                     ]
                   changePicker t oldT = case oldT of
                     DateTransfer _ -> oldT
-                    RepeatingTransfer r ->
+                    RepeatingTransfer r _ _ ->
                       let p = read $ T.unpack t
                       in  if isRepeatingPickedDifferent r p
                       then RepeatingTransfer $ case p of
@@ -97,7 +97,8 @@ scheduledTransferEdit s =
                     , onOption changePicker
                     , className "form-select"
                     ] (mkPicker <$> [minBound .. maxBound])
-        in  [div [className "col"] [selectRepeat]]
+        in  [ div [className "col"] [selectRepeat]
+            ]
             <> ( case r of
                     RepeatingDaily -> []
                     RepeatingWeekly w ->
@@ -155,11 +156,18 @@ scheduledTransferEdit s =
 
 scheduledTransferView :: ScheduledTransfer -> Html m a
 scheduledTransferView s = case s of
-  RepeatingTransfer r -> case r of
-    RepeatingDaily -> "everyday"
-    RepeatingWeekly w -> text $ "every " <> prettyPrintDayOfWeek w
-    RepeatingMonthly m -> text $ "every " <> T.pack (show m) <> daySuffix m <> " per month"
-    RepeatingYearly d -> text $ "every " <> T.pack (show d) <> daySuffix d <> " day per year"
+  RepeatingTransfer r ml mr ->
+    let limitsPhrase = case (ml,mr) of
+          (Nothing,Nothing) -> ""
+          (Just l, Just r) -> ", between " <> T.pack (show l) <> " and " <> T.pack (show r)
+          (Just l, Nothing) -> ", after " <> T.pack (show l)
+          (Nothing, Just r) -> ", before " <> T.pack (show r)
+        repeatPhrase = case r of
+          RepeatingDaily -> "everyday"
+          RepeatingWeekly w -> text $ "every " <> prettyPrintDayOfWeek w
+          RepeatingMonthly m -> text $ "every " <> T.pack (show m) <> daySuffix m <> " per month"
+          RepeatingYearly d -> text $ "every " <> T.pack (show d) <> daySuffix d <> " day per year"
+    in  repeatPhrase <> limitsPhrase
   DateTransfer day -> text $ "once on " <> T.pack (show day)
   where
     daySuffix x

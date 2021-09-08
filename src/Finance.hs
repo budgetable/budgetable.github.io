@@ -60,31 +60,38 @@ instance NFData RepeatingTransfer
 
 -- | The schedule of a transfer
 data ScheduledTransfer
-  = RepeatingTransfer RepeatingTransfer -- ^ on some repeating schedule
+  = RepeatingTransfer RepeatingTransfer (Maybe Day) (Maybe Day) -- ^ on some repeating schedule
   | DateTransfer Day -- ^ on some specific day (should be in the future)
   deriving (Show, Read, Eq, Ord, Generic)
 instance NFData ScheduledTransfer
 isRepeating :: ScheduledTransfer -> Bool
-isRepeating (RepeatingTransfer _) = True
-isRepeating _                     = False
+isRepeating (RepeatingTransfer _ _ _) = True
+isRepeating _                         = False
 
 class Schedulable a where
   isApplicableOn :: a -> Day -> Bool
 instance Schedulable ScheduledTransfer where
   isApplicableOn t day = case t of
     DateTransfer day' -> day == day'
-    RepeatingTransfer r -> case r of
-      RepeatingDaily -> True
-      RepeatingWeekly w ->
-        let (_,_,weekDay) = toWeekDate day
-        in  weekDay == dayOfWeekNum w
-      RepeatingMonthly dayInMonth ->
-        let (y,m,d) = toGregorian day
-            mLen = gregorianMonthLength y m
-        in  d == dayInMonth || (mLen < dayInMonth && d == mLen)
-      RepeatingYearly dayInYear ->
-        let (y,m,d) = toGregorian day
-        in  dayInYear == monthAndDayToDayOfYear (isLeapYear y) m d
+    RepeatingTransfer r mLeftLimit mRightLimit ->
+      let isWithinLimits = case (mLeftLimit,mRightLimit) of
+            (Nothing,Nothing) -> True
+            (Just left, Just right) -> left <= day && day <= right
+            (Just left, Nothing) -> left <= day
+            (Nothing, Just right) -> day <= right
+          isRepeatQualiried = case r of
+            RepeatingDaily -> True
+            RepeatingWeekly w ->
+              let (_,_,weekDay) = toWeekDate day
+              in  weekDay == dayOfWeekNum w
+            RepeatingMonthly dayInMonth ->
+              let (y,m,d) = toGregorian day
+                  mLen = gregorianMonthLength y m
+              in  d == dayInMonth || (mLen < dayInMonth && d == mLen)
+            RepeatingYearly dayInYear ->
+              let (y,m,d) = toGregorian day
+              in  dayInYear == monthAndDayToDayOfYear (isLeapYear y) m d
+      in  isWithinLimits && isRepeatQualified
 
 data AccountLimit
   = NoRestriction
