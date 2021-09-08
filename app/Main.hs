@@ -20,7 +20,7 @@ import           Finance                       (Account (..), Balances, Dollar,
                                                 blankAccount, everyMonth,
                                                 everyWeek, everyYear,
                                                 mkBalances)
-import           FinancePlanView               (financePlanEdit)
+import           FinancePlanView               (financePlanEdit, financePlanView)
 
 import           Prelude                       hiding (div, min)
 import           Shpadoinkle                   (Html, JSM, MonadJSM,
@@ -34,7 +34,7 @@ import           Shpadoinkle.Html              (a, button, canvas', className,
                                                 input', min, onClick, onOption,
                                                 option, p, p_, select, selected,
                                                 step, styleProp, target, type',
-                                                value, width)
+                                                value, width, label, onCheck, checked)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
@@ -42,6 +42,7 @@ import           Shpadoinkle.Run               (live, runJSorWarp)
 import           Control.Concurrent            (forkIO, threadDelay)
 import           Control.Concurrent.STM        (newTVarIO)
 import           Control.DeepSeq               (NFData)
+import           Control.Lens.Tuple            (_1, _2)
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
 import           Control.Monad                 (void)
@@ -75,7 +76,7 @@ data Model = Model
   , balancesInEditError :: Maybe Text
   , balancesSaved       :: Balances
   , startDate           :: Day
-  , financePlans        :: [FinancePlan]
+  , financePlans        :: [(FinancePlan, Bool)]
   , numberToCompute     :: Int
   , computeBatch        :: ComputeBatchPicker
   } deriving (Eq, Ord, Show, Read, Generic)
@@ -83,7 +84,7 @@ instance NFData Model
 
 batchComputed :: Model -> [(Day, Balances)]
 batchComputed Model{..} = take numberToCompute $
-  let daysComputed = balancesOverTime startDate balancesSaved financePlans
+  let daysComputed = balancesOverTime startDate balancesSaved (fst <$> financePlans)
   in  case computeBatch of
     PickerComputeDaily   -> daysComputed
     PickerComputeWeekly  -> everyWeek daysComputed
@@ -179,27 +180,39 @@ view today debouncer Model{..} = div [className "container"]
         saveBalances m@Model{balancesInEdit = inEdit} = case mkBalances inEdit of
           Left e   -> m {balancesInEditError = Just e}
           Right bs -> m {balancesInEditError = Nothing, balancesSaved = bs}
-    listOfFinancePlansEdit :: [FinancePlan] -> Html m [FinancePlan]
+    listOfFinancePlansEdit :: [(FinancePlan, Bool)] -> Html m [(FinancePlan, Bool)]
     listOfFinancePlansEdit fs = div [id' "finance-plans"] $
       imap itemFinancePlansEdit fs <>
       [ div [className "row d-grid", styleProp [("padding-top","0.5rem")]] [newButton]
       ]
       where
-        itemFinancePlansEdit :: Int -> FinancePlan -> Html m [FinancePlan]
-        itemFinancePlansEdit idx f = div [className "row finance-plan"]
+        itemFinancePlansEdit :: Int -> (FinancePlan, Bool) -> Html m [(FinancePlan, Bool)]
+        itemFinancePlansEdit idx (f,isEditable) = div [className "row finance-plan"]
           [ div [className "col-xs-12 col-lg-11"] . (: []) $
-            onSum (ix idx) (financePlanEdit (Map.keysSet balancesSaved) debouncer f)
-          , div [className "col-xs-12 col-lg-1 d-grid", styleProp [("padding","0.5rem")]] . (: []) $
-            button
-            [ onClick $ \xs -> take idx xs <> drop (idx + 1) xs
-            , className "btn btn-secondary"
-            ] ["Delete"]
+              if isEditable
+              then onSum (ix idx . _1) (financePlanEdit (Map.keysSet balancesSaved) debouncer f)
+              else financePlanView f
+          , div [className "col-xs-12 col-lg-1"] $
+            [ div [className "row"] . (: []) $ div [className "form-check"]
+                [ onSum (ix idx . _2) $
+                    input' [type' "checkbox", checked isEditable, onCheck const, className "form-check-input"]
+                , label [className "form-check-label"] ["Edit"]
+                ]
+            ] <> if isEditable
+                 then
+                    [ div [className "row d-grid"] . (: []) $
+                        button
+                          [ onClick $ \xs -> take idx xs <> drop (idx + 1) xs
+                          , className "btn btn-secondary"
+                          ] ["Delete"]
+                    ] -- , styleProp [("padding","0.5rem")]] . (: []) $
+                 else []
           ]
-        newButton :: Html m [FinancePlan]
+        newButton :: Html m [(FinancePlan, Bool)]
         newButton =
           button
-            [onClick (<> [blankFinancePlan]), className "btn btn-secondary"]
-            [text $ "Add New Finance Plan" <> if null fs then " (you don't have any)" else ""]
+            [onClick (<> [(blankFinancePlan, True)]), className "btn btn-secondary"]
+            [text $ "Add New Finance Plan" <> if null fs then " (click me)" else ""]
           where
             blankFinancePlan =
               FinancePlanTransfer $ Transfer

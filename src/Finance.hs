@@ -98,8 +98,12 @@ data Account = Account
   { accountName  :: Text -- ^ unique name
   , accountLimit :: AccountLimit -- ^ limits for the account
   , accountColor :: Text -- ^ hex color
-  } deriving (Show, Read, Eq, Ord, Generic)
+  } deriving (Show, Read, Generic)
 instance NFData Account
+instance Eq Account where
+  (Account x _ _) == (Account y _ _) = x == y
+instance Ord Account where
+  compare (Account x _ _) (Account y _ _) = compare x y
 blankAccount :: Account
 blankAccount = Account "" NoRestriction ""
 

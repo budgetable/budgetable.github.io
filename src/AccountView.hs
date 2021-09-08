@@ -75,7 +75,7 @@ accountEdit debouncer (Account name limit color) =
 
 
 accountView :: Account -> Html m a
-accountView (Account name limit color) = span [styleProp [("background",color)]] [text $ name <> " (" <> l <> ")"]
+accountView (Account name limit _) = text $ name <> " (" <> l <> ")"
   where
     l = case limit of
       NoRestriction -> "&plusmn;"

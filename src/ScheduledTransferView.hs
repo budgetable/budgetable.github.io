@@ -156,11 +156,11 @@ scheduledTransferEdit s =
 scheduledTransferView :: ScheduledTransfer -> Html m a
 scheduledTransferView s = case s of
   RepeatingTransfer r -> case r of
-    RepeatingDaily -> "Repeating daily"
-    RepeatingWeekly w -> text $ "Repeating every " <> prettyPrintDayOfWeek w
-    RepeatingMonthly m -> text $ "Repeating every " <> T.pack (show m) <> daySuffix m <> " day of the month"
-    RepeatingYearly d -> text $ "Repeating every " <> T.pack (show d) <> daySuffix d <> " day of the year"
-  DateTransfer day -> text $ "Occurring once on " <> T.pack (show day)
+    RepeatingDaily -> "everyday"
+    RepeatingWeekly w -> text $ "every " <> prettyPrintDayOfWeek w
+    RepeatingMonthly m -> text $ "every " <> T.pack (show m) <> daySuffix m <> " per month"
+    RepeatingYearly d -> text $ "every " <> T.pack (show d) <> daySuffix d <> " day per year"
+  DateTransfer day -> text $ "once on " <> T.pack (show day)
   where
     daySuffix x
       | deca < 20 && deca > 10 = "th"

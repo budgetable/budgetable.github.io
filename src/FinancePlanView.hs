@@ -228,26 +228,40 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
 
 
 financePlanView :: FinancePlan -> Html m a
-financePlanView p = case p of
-  FinancePlanTransfer (Transfer from to s v note) -> table_
-    [ tr_ [th [textProperty' "colspan" "2"] ["Transfer"]]
-    , tr_ [td_ ["From:"], td_ [accountView from]]
-    , tr_ [td_ ["To:"], td_ [accountView to]]
-    , tr_ [td_ ["Schedule:"], td_ [scheduledTransferView s]]
-    , tr_ [td_ ["Value:"], td_ [dollarView v]]
-    , tr_ [td_ ["Note:"], td_ [text note]]
+financePlanView p = div [className "row"] $ case p of
+  FinancePlanTransfer (Transfer from to s v note) ->
+    [ div [className "col-sm-2"] [text note]
+    , div [className "col-sm-6"] . (: []) $ div [className "row"]
+      [ centered $ accountView from
+      , arrow
+      , centered $ dollarView v
+      , arrow
+      , centered $ accountView to
+      ]
+    , div [className "col-sm-4"] [scheduledTransferView s]
     ]
-  FinancePlanIncome (Income a s v note) -> table_
-    [ tr_ [th [textProperty' "colspan" "2"] ["Income"]]
-    , tr_ [td_ ["Income:"], td_ [accountView a]]
-    , tr_ [td_ ["Schedule:"], td_ [scheduledTransferView s]]
-    , tr_ [td_ ["Value:"], td_ [dollarView v]]
-    , tr_ [td_ ["Note:"], td_ [text note]]
+  FinancePlanIncome (Income a s v note) ->
+    [ div [className "col-sm-2"] [text note]
+    , div [className "col-sm-6"] . (: []) $ div [className "row"]
+      [ div [className "col"] []
+      , div [className "col-sm-1"] []
+      , centered $ dollarView v
+      , arrow
+      , centered $ accountView a
+      ]
+    , div [className "col-sm-4"] [scheduledTransferView s]
     ]
-  FinancePlanCost (Cost a s v note) -> table_
-    [ tr_ [th [textProperty' "colspan" "2"] ["Cost"]]
-    , tr_ [td_ ["Cost:"], td_ [accountView a]]
-    , tr_ [td_ ["Schedule:"], td_ [scheduledTransferView s]]
-    , tr_ [td_ ["Value:"], td_ [dollarView v]]
-    , tr_ [td_ ["Note:"], td_ [text note]]
+  FinancePlanCost (Cost a s v note) ->
+    [ div [className "col-sm-2"] [text note]
+    , div [className "col-sm-6"] . (: []) $ div [className "row"]
+      [ centered $ accountView a
+      , arrow
+      , centered $ dollarView v
+      , div [className "col-sm-1"] []
+      , div [className "col"] []
+      ]
+    , div [className "col-sm-4"] [scheduledTransferView s]
     ]
+  where
+    arrow = div [className "col-sm-1"] . (: []) $ "&#8594;"
+    centered = div [className "col", styleProp [("text-align", "center")]] . (: [])
