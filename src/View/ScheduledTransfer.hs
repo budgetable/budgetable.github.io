@@ -3,9 +3,9 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ScheduledTransferView where
+module View.ScheduledTransfer where
 
-import           DayView                     (dayEdit)
+import           View.Day                    (dayEdit)
 import           Finance                     (DayOfWeek (Sun),
                                               RepeatingTransfer (..),
                                               ScheduledTransfer (..),

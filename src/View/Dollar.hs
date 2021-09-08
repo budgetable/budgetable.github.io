@@ -3,12 +3,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module DollarView where
+module View.Dollar where
 
 import           Finance                     (Cent (..), Dollar (..),
                                               dollarParser, dollarPrinter)
 
-import           Prelude                     hiding (div, span)
+import           Prelude                     hiding (div, span, min)
 import           Shpadoinkle                 (Html, JSM, MonadJSM, RawEvent,
                                               RawNode (..), liftJSM, listenRaw,
                                               text)
@@ -16,7 +16,7 @@ import           Shpadoinkle.Console         (warn)
 import           Shpadoinkle.Continuation    (Continuation, done, pur)
 import           Shpadoinkle.Html            (className, div, i, input',
                                               onBlurC, onChange, span, step,
-                                              type', value)
+                                              type', value, min)
 
 import           Control.Arrow               (second)
 import           Data.Attoparsec.Text        (parseOnly)
@@ -27,17 +27,17 @@ import           Language.Javascript.JSaddle (ToJSVal, fromJSValUnchecked,
 
 
 
-dollarEdit :: forall m. MonadJSM m => Dollar -> Html m Dollar
-dollarEdit d = div [className "input-group mb-3"]
+dollarEdit :: forall m. MonadJSM m => Bool -> Dollar -> Html m Dollar
+dollarEdit isPositiveOnly d = div [className "input-group mb-3"]
   [ div [className "input-group-prepend"] [span [className "input-group-text"] ["$"]]
-  , input'
+  , input' $
     [ type' "number"
     , step "0.01"
     , value (dollarPrinter d)
     , className "form-control"
     , listenRaw "blur" parse
     , listenRaw "change" parse
-    ]
+    ] <> [min "0" | isPositiveOnly]
   ]
   where
     parse :: RawNode -> RawEvent -> JSM (Continuation m Dollar)

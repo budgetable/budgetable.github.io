@@ -8,10 +8,8 @@
 
 module Main where
 
-import           BalancesView                  (balancesEdit)
 import           Chart                         (ChartData (..),
                                                 InitialChart (..))
-import           DayView                       (dayEdit)
 import           Debouncer                     (Debouncer)
 import           Finance                       (Account (..), Balances, Dollar,
                                                 FinancePlan (FinancePlanTransfer),
@@ -20,7 +18,10 @@ import           Finance                       (Account (..), Balances, Dollar,
                                                 blankAccount, everyMonth,
                                                 everyWeek, everyYear,
                                                 mkBalances)
-import           FinancePlanView               (financePlanEdit, financePlanView)
+import           View.Balances                 (balancesEdit)
+import           View.Day                      (dayEdit)
+import           View.FinancePlan              (financePlanEdit,
+                                                financePlanView)
 
 import           Prelude                       hiding (div, min)
 import           Shpadoinkle                   (Html, JSM, MonadJSM,
@@ -28,13 +29,14 @@ import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 shpadoinkle, text)
 import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
-import           Shpadoinkle.Html              (a, button, canvas', className,
-                                                debounceRaw, div, h1_, h2_, h3_,
-                                                h4_, height, hr'_, href, id',
-                                                input', min, onClick, onOption,
+import           Shpadoinkle.Html              (a, button, canvas', checked,
+                                                className, debounceRaw, div,
+                                                h1_, h2_, h3_, h4_, height,
+                                                hr'_, href, id', input', label,
+                                                min, onCheck, onClick, onOption,
                                                 option, p, p_, select, selected,
                                                 step, styleProp, target, type',
-                                                value, width, label, onCheck, checked)
+                                                value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
@@ -42,9 +44,9 @@ import           Shpadoinkle.Run               (live, runJSorWarp)
 import           Control.Concurrent            (forkIO, threadDelay)
 import           Control.Concurrent.STM        (newTVarIO)
 import           Control.DeepSeq               (NFData)
-import           Control.Lens.Tuple            (_1, _2)
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
+import           Control.Lens.Tuple            (_1, _2)
 import           Control.Monad                 (void)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
