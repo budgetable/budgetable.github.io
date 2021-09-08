@@ -13,6 +13,7 @@ library
       DayView
       Chart
       Debouncer
+      View.Test
   hs-source-dirs:      src
   build-depends:
       base ^>=4.12.0.0

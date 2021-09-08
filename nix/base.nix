@@ -87,10 +87,19 @@ let
         pkgs.haskell.packages.${compilerjs}.callCabal2nix "budgetable"
           (filterSource
              (path: _:
-                baseNameOf path == "src"
-                || baseNameOf path == "app"
-                || l.hasSuffix ".hs" path
-                || l.hasSuffix ".cabal" path
+               let pathP = replaceStrings [((getEnv "PWD") + "/")] [""] path; in
+               let first3 = substring 0 3 pathP; in
+               trace first3
+               ((first3 == "src" || first3 == "app") || l.hasSuffix ".cabal" path)
+             #   seq pathP (trace pathP
+             # (
+             #    baseNameOf path == "src"
+             #    # || baseNameOf path == "View"
+             #    || baseNameOf path == "app"
+             #    || l.hasSuffix ".hs" path
+             #    || l.hasSuffix ".cabal" path
+             # )
+             # )
              )
              ../.
           )
