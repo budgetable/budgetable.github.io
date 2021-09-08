@@ -3,19 +3,19 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module FinancePlanView where
+module View.FinancePlan where
 
-import           AccountView                 (accountView)
+import           View.Account                (accountView)
+import           View.Dollar                 (dollarEdit, dollarView)
+import           View.ScheduledTransfer      (scheduledTransferEdit,
+                                              scheduledTransferView)
 import           Debouncer                   (Debouncer)
-import           DollarView                  (dollarEdit, dollarView)
 import           Finance                     (Account (..),
                                               AccountLimit (NoRestriction),
                                               Cost (..), FinancePlan (..),
                                               Income (..),
                                               ScheduledTransfer (DateTransfer),
                                               Transfer (..), blankAccount)
-import           ScheduledTransferView       (scheduledTransferEdit,
-                                              scheduledTransferView)
 
 import           Prelude                     hiding (div)
 import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
@@ -140,7 +140,7 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
         map (onRecord #transferSchedule) (scheduledTransferEdit s)
       , div [className "row"]
         [ div [className "col"] . (: []) $
-          onRecord #transferValue (dollarEdit v)
+          onRecord #transferValue (dollarEdit True v)
         , div [className "col"] . (: []) $
           onRecord #transferNote $
             input'
@@ -166,7 +166,7 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
         map (onRecord #incomeSchedule) (scheduledTransferEdit s)
       , div [className "row"]
           [ div [className "col"] . (: []) $
-            onRecord #incomeValue (dollarEdit v)
+            onRecord #incomeValue (dollarEdit True v)
           , div [className "col"] . (: []) $
             onRecord #incomeNote $
             input'
@@ -192,7 +192,7 @@ financePlanEdit accounts debouncer f = div [className "row"] $ case f of
         map (onRecord #costSchedule) (scheduledTransferEdit s)
       , div [className "row"]
           [ div [className "col"] . (: []) $
-            onRecord #costValue (dollarEdit v)
+            onRecord #costValue (dollarEdit True v)
           , div [className "col"] . (: []) $
             onRecord #costNote $
             input'

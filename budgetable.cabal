@@ -4,15 +4,15 @@ version:             0.1.0.0
 
 library
   exposed-modules:
-      Finance
-      DollarView
-      AccountView
-      BalancesView
-      ScheduledTransferView
-      FinancePlanView
-      DayView
       Chart
       Debouncer
+      Finance
+      View.Account
+      View.Balances
+      View.Day
+      View.Dollar
+      View.FinancePlan
+      View.ScheduledTransfer
   hs-source-dirs:      src
   build-depends:
       base ^>=4.12.0.0
