@@ -37,7 +37,7 @@ import           Shpadoinkle.Html              (a, button, canvas', checked,
                                                 h1_, h2_, h3_, h4_, height,
                                                 hr'_, href, id', input', label,
                                                 min, onCheck, onClick, onOption,
-                                                option, p, p_, select, selected,
+                                                option, p, select, selected,
                                                 step, styleProp, target, type',
                                                 value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
@@ -78,7 +78,6 @@ instance NFData ComputeBatchPicker
 
 data Model = Model
   { balancesInEdit      :: [(Account, Dollar)]
-  , balancesInEditError :: Maybe Text
   , balancesSaved       :: Balances
   , startDate           :: Day
   , financePlans        :: [(FinancePlan, Bool)]
@@ -124,7 +123,6 @@ view today debouncer Model{..} = div [className "container"]
   , h3_ ["Active Accounts"]
   , onRecord #balancesInEdit $ balancesEdit debouncer balancesInEdit
   , div [className "row d-grid"] [saveBalancesButton]
-  , showBalancesError
   , hr'_
   , h3_ ["Finance Plans"]
   , onRecord #financePlans $ listOfFinancePlansEdit financePlans
@@ -188,14 +186,11 @@ view today debouncer Model{..} = div [className "container"]
     ]
   ]
   where
-    showBalancesError = case balancesInEditError of
-      Nothing -> ""
-      Just e  -> p_ [text e]
     saveBalancesButton = button [className "btn btn-primary", onClick saveBalances] ["Save Balances"]
       where
         saveBalances m@Model{balancesInEdit = inEdit} = case mkBalances inEdit of
-          Left e   -> m {balancesInEditError = Just e}
-          Right bs -> m {balancesInEditError = Nothing, balancesSaved = bs}
+          Nothing -> m
+          Just bs -> m {balancesSaved = bs}
     listOfFinancePlansEdit :: [(FinancePlan, Bool)] -> Html m [(FinancePlan, Bool)]
     listOfFinancePlansEdit fs = div [id' "finance-plans"] $
       imap itemFinancePlansEdit fs <>
@@ -242,7 +237,14 @@ view today debouncer Model{..} = div [className "container"]
 app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
-  let emptyState = Model [] Nothing Map.empty today [] 7 PickerComputeDaily
+  let emptyState = Model
+        { balancesInEdit  = []
+        , balancesSaved   = Map.empty
+        , startDate       = today
+        , financePlans    = []
+        , numberToCompute = 7
+        , computeBatch    = PickerComputeDaily
+        }
   initialState <- fromMaybe emptyState <$> getStorage "budgetable"
   model <- newTVarIO initialState
   debouncer <- debounceRaw 1

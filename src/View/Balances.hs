@@ -37,25 +37,19 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
   ]
   where
     balanceEdit :: Int -> (Account, Dollar) -> Html m [(Account, Dollar)]
-    balanceEdit idx x@(a,v) = div [className "row account"]
-      [ div [className "row g-2"] $
-        (onSum (ix idx) <$> accountEdit debouncer x)
-        <>
-        [ div
-          [ className "col-xs-12 col-sm-4 col-lg-1 d-grid"
-          , styleProp [("margin-top", "0"),("padding-bottom", "0.5rem")]
-          ]
-          [ button
-            [ className "btn btn-secondary"
-            , onClick $ \xs -> take idx xs <> drop (idx + 1) xs
-            ]
-            ["Delete"]
-          ]
+    balanceEdit idx x@(a,v) = div [className "row account"] $
+      (onSum (ix idx) <$> accountEdit (all (\(a',_) -> a' /= a) (take idx xs <> drop (idx + 1) xs)) debouncer x)
+      <>
+      [ div
+        [ className "col-xs-12 col-sm-4 col-lg-1 d-grid"
+        , styleProp [("margin-top", "0"),("padding-bottom", "0.5rem")]
         ]
-      , div [className "row"] $
-          case validate a v of
-            Nothing -> []
-            Just e  -> [span_ [text e]]
+        [ button
+          [ className "btn btn-secondary"
+          , onClick $ \xs -> take idx xs <> drop (idx + 1) xs
+          ]
+          ["Delete"]
+        ]
       ]
     newButton :: Html m [(Account, Dollar)]
     newButton =

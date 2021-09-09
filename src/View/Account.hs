@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module View.Account where
 
@@ -32,10 +33,11 @@ import           Language.Javascript.JSaddle (JSVal, fromJSValUnchecked,
 
 accountEdit :: forall m
              . MonadIO m
-            => Debouncer m T.Text
+            => Bool
+            -> Debouncer m T.Text
             -> (Account, Dollar)
             -> [Html m (Account, Dollar)]
-accountEdit debouncer (a@(Account name limit color), v) =
+accountEdit isUnique debouncer (a@(Account name limit color), v) =
   [ div [className "col-xs-12 col-sm-6 col-lg-3"]
     [ onRecord (_1 . #accountName) $ input'
         [ value name
@@ -45,9 +47,17 @@ accountEdit debouncer (a@(Account name limit color), v) =
             t <- fromJSValUnchecked v
             pure . pur $ const t
         , placeholder "Account Name"
-        , className $ "form-control" <> if name == "" then " is-invalid" else ""
+        , className $
+            let validity
+                  | name == "" || not isUnique = " is-invalid"
+                  | otherwise = ""
+            in  "form-control" <> validity
         ]
-    , div [className "invalid-feedback"] ["Account name can't be left blank"] -- FIXME and should be unique
+    , div [className "invalid-feedback"]
+      [ if | name == "" -> "Account name can't be left blank"
+           | not isUnique -> "Account name should be unique"
+           | otherwise -> ""
+      ]
     ]
   , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
     onRecord (_1 . #accountLimit) $ accountLimitEdit limit
