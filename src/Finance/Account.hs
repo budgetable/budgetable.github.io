@@ -34,15 +34,18 @@ blankAccount :: Account
 blankAccount = Account "" NoRestriction ""
 
 outOfLimitError :: Account -> Dollar -> Maybe Text
-outOfLimitError a@(Account name limit _) v
+outOfLimitError a@(Account name limit _) v = case limit of
+  NoRestriction -> Nothing
+  OnlyPositive
+    | v < 0 ->
+      Just $ "Account " <> T.pack (show name) <> " is Only Positive but has value of $" <> dollarPrinter v
+    | otherwise -> Nothing
+  OnlyNegative
+    | v > 0 ->
+      Just $ "Account " <> T.pack (show name) <> " is Only Negative but has value of $" <> dollarPrinter v
+    | otherwise -> Nothing
+
+validate :: Account -> Dollar -> Maybe Text
+validate a@(Account name _ _) v
   | name == "" = Just "Account name can't be left blank"
-  | otherwise = case limit of
-    NoRestriction -> Nothing
-    OnlyPositive
-      | v < 0 ->
-        Just $ "Account " <> T.pack (show name) <> " is Only Positive but has value of $" <> dollarPrinter v
-      | otherwise -> Nothing
-    OnlyNegative
-      | v > 0 ->
-        Just $ "Account " <> T.pack (show name) <> " is Only Negative but has value of $" <> dollarPrinter v
-      | otherwise -> Nothing
+  | otherwise = outOfLimitError a v

@@ -13,7 +13,7 @@ import           Finance.Plan                (Cost (..), FinancePlan (..),
                                               Income (..), Transfer (..), FinancePlanType (..))
 import           Finance.Schedule            (ScheduledTransfer (DateTransfer))
 import           View.Account                (accountView)
-import           View.Dollar                 (dollarEdit, dollarView)
+import           View.Dollar                 (dollarEdit, dollarView, DollarEdit (..))
 import           View.ScheduledTransfer      (scheduledTransferEdit,
                                               scheduledTransferView)
 
@@ -81,7 +81,12 @@ financePlanEdit accounts debouncer (FinancePlan t s v note) = div [className "ro
     map (onRecord #financePlanSchedule) (scheduledTransferEdit s)
   , div [className "row"]
       [ div [className "col"] . (: []) $
-        onRecord #financePlanValue (dollarEdit True v)
+        let params = DollarEdit
+              { dollarEditIsPositive = True
+              , dollarEditIsValid = True
+              , dollarEditInvalidFeedback = ""
+              }
+        in  onRecord #financePlanValue (dollarEdit params v)
       , div [className "col"] . (: []) $
         onRecord #financePlanNote $
         input'

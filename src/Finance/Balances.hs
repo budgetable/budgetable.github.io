@@ -2,7 +2,7 @@
 
 module Finance.Balances where
 
-import           Finance.Account (Account (..), outOfLimitError)
+import           Finance.Account (Account (..), validate)
 import           Finance.Dollar  (Dollar)
 
 import           Data.Map        (Map)
@@ -18,7 +18,7 @@ type Balances = Map Account Dollar
 addAccount :: Balances -> Account -> Dollar -> Either Text Balances
 addAccount acc a@(Account name limit _) v
   | Map.null (Map.filterWithKey (\a' _ -> accountName a' == name) acc) =
-      maybe continue Left (outOfLimitError a v)
+      maybe continue Left (validate a v)
   | otherwise = Left $ "Account " <> T.pack (show name) <> " already exists in balances"
   where
     continue = pure $ Map.insert a v acc

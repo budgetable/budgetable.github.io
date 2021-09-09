@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE RecordWildCards    #-}
 
 module View.Dollar where
 
@@ -26,18 +27,25 @@ import           Language.Javascript.JSaddle (ToJSVal, fromJSValUnchecked,
                                               makeObject, unsafeGetProp)
 
 
+data DollarEdit m = DollarEdit
+  { dollarEditIsPositive :: Bool
+  , dollarEditIsValid :: Bool
+  , dollarEditInvalidFeedback :: Html m Dollar
+  }
 
-dollarEdit :: forall m. MonadJSM m => Bool -> Dollar -> Html m Dollar
-dollarEdit isPositiveOnly d = div [className "input-group mb-3"]
+
+dollarEdit :: forall m. MonadJSM m => DollarEdit m -> Dollar -> Html m Dollar
+dollarEdit DollarEdit{..} d = div [className "input-group mb-3"]
   [ div [className "input-group-prepend"] [span [className "input-group-text"] ["$"]]
   , input' $
     [ type' "number"
     , step "0.01"
     , value (dollarPrinter d)
-    , className "form-control"
+    , className $ "form-control" <> if dollarEditIsValid then "" else " is-invalid"
     , listenRaw "blur" parse
     , listenRaw "change" parse
-    ] <> [min "0" | isPositiveOnly]
+    ] <> [min "0" | dollarEditIsPositive]
+  , dollarEditInvalidFeedback
   ]
   where
     parse :: RawNode -> RawEvent -> JSM (Continuation m Dollar)

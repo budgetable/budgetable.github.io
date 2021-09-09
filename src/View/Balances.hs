@@ -7,7 +7,7 @@ module View.Balances where
 import           Debouncer                (Debouncer)
 import           Finance.Account          (Account (..),
                                            AccountLimit (NoRestriction),
-                                           blankAccount, outOfLimitError)
+                                           blankAccount, validate)
 import           Finance.Balances         (Balances)
 import           Finance.Dollar           (Dollar)
 import           View.Account             (accountEdit, accountView)
@@ -37,12 +37,11 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
   ]
   where
     balanceEdit :: Int -> (Account, Dollar) -> Html m [(Account, Dollar)]
-    balanceEdit idx (a,v) = div [className "row account"]
+    balanceEdit idx x@(a,v) = div [className "row account"]
       [ div [className "row g-2"] $
-        (onSum (ix idx . _1) <$> accountEdit debouncer a)
+        (onSum (ix idx) <$> accountEdit debouncer x)
         <>
-        [ div [className "col-xs-12 col-sm-4 col-lg-3"] . (: []) $ onSum (ix idx . _2) (dollarEdit False v)
-        , div
+        [ div
           [ className "col-xs-12 col-sm-4 col-lg-1 d-grid"
           , styleProp [("margin-top", "0"),("padding-bottom", "0.5rem")]
           ]
@@ -54,7 +53,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
           ]
         ]
       , div [className "row"] $
-          case outOfLimitError a v of
+          case validate a v of
             Nothing -> []
             Just e  -> [span_ [text e]]
       ]
