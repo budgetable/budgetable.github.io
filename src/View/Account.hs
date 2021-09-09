@@ -6,7 +6,7 @@
 module View.Account where
 
 import           Debouncer                   (Debouncer)
-import           Finance                     (Account (..), AccountLimit (..))
+import           Finance.Account             (Account (..), AccountLimit (..))
 
 import           Prelude                     hiding (div, span)
 import           Shpadoinkle                 (Html, RawNode (..), listenRaw,

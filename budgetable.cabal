@@ -7,6 +7,12 @@ library
       Chart
       Debouncer
       Finance
+      Finance.Account
+      Finance.Balances
+      Finance.DayOf
+      Finance.Dollar
+      Finance.Plan
+      Finance.Schedule
       View.Account
       View.Balances
       View.Day
@@ -50,6 +56,7 @@ executable budgetable-app
     , stm
     , text
     , time == 1.8.0.2
+    , unliftio
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options:

@@ -2,8 +2,9 @@
 
 module Chart where
 
-import           Finance            (Account (..), Balances, Dollar,
-                                     dollarPrinter)
+import           Finance.Account    (Account (..))
+import           Finance.Balances   (Balances)
+import           Finance.Dollar     (Dollar, dollarPrinter)
 
 import           Data.Aeson         (ToJSON (..), Value (String), object, (.=))
 import           Data.Map           (Map)

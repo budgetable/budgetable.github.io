@@ -5,11 +5,12 @@
 
 module View.ScheduledTransfer where
 
-import           View.Day                    (dayEdit)
-import           Finance                     (DayOfWeek (Sun),
-                                              RepeatingTransfer (..),
+import           Finance.DayOf               (DayOfWeek (Sun),
+                                              prettyPrintDayOfWeek)
+import           Finance.Schedule            (RepeatingTransfer (..),
                                               ScheduledTransfer (..),
-                                              isRepeating, prettyPrintDayOfWeek)
+                                              isRepeating)
+import           View.Day                    (dayEdit)
 
 import           Prelude                     hiding (div, max, min)
 import           Shpadoinkle                 (Html, RawNode (..), listenRaw,

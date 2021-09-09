@@ -4,13 +4,14 @@
 
 module View.Balances where
 
+import           Debouncer                (Debouncer)
+import           Finance.Account          (Account (..),
+                                           AccountLimit (NoRestriction),
+                                           blankAccount, outOfLimitError)
+import           Finance.Balances         (Balances)
+import           Finance.Dollar           (Dollar)
 import           View.Account             (accountEdit, accountView)
 import           View.Dollar              (dollarEdit, dollarView)
-import           Debouncer                (Debouncer)
-import           Finance                  (Account (..),
-                                           AccountLimit (NoRestriction),
-                                           Balances, Dollar, blankAccount,
-                                           outOfLimitError)
 
 import           Prelude                  hiding (div)
 import           Shpadoinkle              (Html, MonadJSM, text)

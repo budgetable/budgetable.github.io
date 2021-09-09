@@ -4,20 +4,23 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
 
 module Main where
 
+
 import           Chart                         (ChartData (..),
                                                 InitialChart (..))
 import           Debouncer                     (Debouncer)
-import           Finance                       (Account (..), Balances, Dollar,
-                                                FinancePlan (FinancePlanTransfer),
-                                                ScheduledTransfer (DateTransfer),
-                                                Transfer (..), balancesOverTime,
-                                                blankAccount, everyMonth,
-                                                everyWeek, everyYear,
-                                                mkBalances)
+import           Finance                       (balancesOverTime, everyMonth,
+                                                everyWeek, everyYear)
+import           Finance.Account               (Account (..), blankAccount)
+import           Finance.Balances              (Balances, mkBalances)
+import           Finance.Dollar                (Dollar)
+import           Finance.Plan                  (FinancePlan (..), FinancePlanType (FinancePlanTypeTransfer),
+                                                Transfer (..))
+import           Finance.Schedule              (ScheduledTransfer (DateTransfer))
 import           View.Balances                 (balancesEdit)
 import           View.Day                      (dayEdit)
 import           View.FinancePlan              (financePlanEdit,
@@ -41,14 +44,14 @@ import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
 
-import           Control.Concurrent            (forkIO, threadDelay)
-import           Control.Concurrent.STM        (newTVarIO)
 import           Control.DeepSeq               (NFData)
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
 import           Control.Lens.Tuple            (_1, _2)
 import           Control.Monad                 (void)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
+import           UnliftIO                      (newTVarIO)
+import           UnliftIO.Concurrent           (forkIO, threadDelay)
 import           Data.Aeson                    (toJSON)
 import           Data.Generics.Labels          ()
 import qualified Data.Map                      as Map
@@ -93,10 +96,21 @@ batchComputed Model{..} = take numberToCompute $
     PickerComputeMonthly -> everyMonth daysComputed
     PickerComputeYearly  -> everyYear daysComputed
 
+#ifndef ghcjs_HOST_OS
+getContext :: IO JSVal
+getContext = error "Must use in GHCjs"
+newChart :: JSVal -> JSVal -> IO JSVal
+newChart = error "Must use in GHCjs"
+updateChart :: JSVal -> IO ()
+updateChart = error "Must use in GHCjs"
+assignChartData :: JSVal -> JSVal -> IO ()
+assignChartData = error "Must use in GHCjs"
+#else
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
 foreign import javascript unsafe "$1.update();" updateChart :: JSVal -> IO ()
 foreign import javascript unsafe "$1.data = $2;" assignChartData :: JSVal -> JSVal -> IO ()
+#endif
 
 view :: forall m
       . MonadJSM m
@@ -200,15 +214,15 @@ view today debouncer Model{..} = div [className "container"]
                     input' [type' "checkbox", checked isEditable, onCheck const, className "form-check-input"]
                 , label [className "form-check-label"] ["Edit"]
                 ]
-            ] <> if isEditable
-                 then
-                    [ div [className "row d-grid"] . (: []) $
-                        button
-                          [ onClick $ \xs -> take idx xs <> drop (idx + 1) xs
-                          , className "btn btn-secondary"
-                          ] ["Delete"]
-                    ] -- , styleProp [("padding","0.5rem")]] . (: []) $
-                 else []
+            ]
+            <>
+              [ div [className "row d-grid"] . (: []) $
+                  button
+                    [ onClick $ \xs -> take idx xs <> drop (idx + 1) xs
+                    , className "btn btn-secondary"
+                    ] ["Delete"]
+              | isEditable
+              ] -- , styleProp [("padding","0.5rem")]] . (: []) $
           ]
         newButton :: Html m [(FinancePlan, Bool)]
         newButton =
@@ -217,9 +231,10 @@ view today debouncer Model{..} = div [className "container"]
             [text $ "Add New Finance Plan" <> if null fs then " (click me)" else ""]
           where
             blankFinancePlan =
-              FinancePlanTransfer $ Transfer
+              FinancePlan
+                (FinancePlanTypeTransfer $ Transfer
                 blankAccount
-                blankAccount
+                blankAccount)
                 (DateTransfer today)
                 0
                 ""

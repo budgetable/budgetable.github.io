@@ -5,18 +5,18 @@
 
 module View.Dollar where
 
-import           Finance                     (Cent (..), Dollar (..),
+import           Finance.Dollar              (Cent (..), Dollar (..),
                                               dollarParser, dollarPrinter)
 
-import           Prelude                     hiding (div, span, min)
+import           Prelude                     hiding (div, min, span)
 import           Shpadoinkle                 (Html, JSM, MonadJSM, RawEvent,
                                               RawNode (..), liftJSM, listenRaw,
                                               text)
 import           Shpadoinkle.Console         (warn)
 import           Shpadoinkle.Continuation    (Continuation, done, pur)
-import           Shpadoinkle.Html            (className, div, i, input',
+import           Shpadoinkle.Html            (className, div, i, input', min,
                                               onBlurC, onChange, span, step,
-                                              type', value, min)
+                                              type', value)
 
 import           Control.Arrow               (second)
 import           Data.Attoparsec.Text        (parseOnly)
