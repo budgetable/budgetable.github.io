@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 module Finance.Plan where
 
-import           Finance.Account  (AccountId, AccountAux (accountAuxLimit), Balances, AccountLimit (OnlyPositive, OnlyNegative))
+import           Finance.Account  (AccountAux (accountAuxLimit), AccountId,
+                                   AccountLimit (OnlyNegative, OnlyPositive),
+                                   Balances)
 import           Finance.Dollar   (Dollar)
 import           Finance.Schedule (Schedulable (..), ScheduledTransfer)
 
@@ -19,23 +21,23 @@ class ApplyTransaction a where
 
 -- | A transfer with its schedule, accounts, and value
 data Transfer = Transfer
-  { transferFromAccount :: AccountId -- ^ the account transferring value from
+  { transferFromAccount    :: AccountId -- ^ the account transferring value from
   , transferFromAccountAux :: AccountAux
-  , transferToAccount   :: AccountId -- ^ the account receiving the value
-  , transferToAccountAux :: AccountAux
+  , transferToAccount      :: AccountId -- ^ the account receiving the value
+  , transferToAccountAux   :: AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Transfer
 
 -- | Genesis of value for accounts
 data Income = Income
-  { incomeAccount :: AccountId -- ^ the account receiving the value
+  { incomeAccount    :: AccountId -- ^ the account receiving the value
   , incomeAccountAux :: AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Income
 
 -- | Burning of value for accounts
 data Cost = Cost
-  { costAccount :: AccountId -- ^ the account losing the value
+  { costAccount    :: AccountId -- ^ the account losing the value
   , costAccountAux :: AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Cost

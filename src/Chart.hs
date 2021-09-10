@@ -1,22 +1,23 @@
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 module Chart where
 
-import           Finance.Account    (AccountId, Balances, Accounts, AccountAux (..))
+import           Finance.Account    (AccountAux (..), AccountId, Accounts,
+                                     Balances)
 import           Finance.Dollar     (Dollar, dollarPrinter)
 
 import           Data.Aeson         (ToJSON (..), Value (String), object, (.=))
-import Data.Maybe (fromJust)
 import           Data.Map           (Map)
 import qualified Data.Map           as Map
+import           Data.Maybe         (fromJust)
 import           Data.Text          (Text)
 import           Data.Time.Calendar (Day)
 
 
 -- | For updating Chart.js
 data ChartData = ChartData
-  { chartData :: [(Day, Balances)]
+  { chartData    :: [(Day, Balances)]
   , chartDataAux :: Accounts
   }
 

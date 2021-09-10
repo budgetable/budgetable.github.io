@@ -5,9 +5,10 @@
 module View.Balances where
 
 import           Debouncer                (Debouncer)
-import           Finance.Account          (AccountId (..), Balances, AccountAux (..), Accounts,
+import           Finance.Account          (AccountAux (..), AccountId (..),
                                            AccountLimit (NoRestriction),
-                                           blankAccount, validate)
+                                           Accounts, Balances, blankAccount,
+                                           validate)
 import           Finance.Dollar           (Dollar)
 import           View.Account             (accountEdit, accountView)
 import           View.Dollar              (dollarEdit, dollarView)

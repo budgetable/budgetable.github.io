@@ -6,20 +6,22 @@
 module View.FinancePlan where
 
 import           Debouncer                   (Debouncer)
-import           Finance.Account             (AccountId (..),
-                                              AccountLimit (NoRestriction), AccountAux (..),
+import           Finance.Account             (AccountAux (..), AccountId (..),
+                                              AccountLimit (NoRestriction),
                                               blankAccount)
 import           Finance.Plan                (Cost (..), FinancePlan (..),
-                                              Income (..), Transfer (..), FinancePlanType (..))
+                                              FinancePlanType (..), Income (..),
+                                              Transfer (..))
 import           Finance.Schedule            (ScheduledTransfer (DateTransfer))
 import           View.Account                (accountView)
-import           View.Dollar                 (dollarEdit, dollarView, DollarEdit (..))
+import           View.Dollar                 (DollarEdit (..), dollarEdit,
+                                              dollarView)
 import           View.ScheduledTransfer      (scheduledTransferEdit,
                                               scheduledTransferView)
 
 import           Prelude                     hiding (div)
-import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
-                                              text, MonadJSM)
+import           Shpadoinkle                 (Html, MonadJSM, RawNode (..),
+                                              listenRaw, text)
 import           Shpadoinkle.Continuation    (pur)
 import           Shpadoinkle.Html            (className, debounceRaw, disabled,
                                               div, hidden, input', label_,
@@ -69,14 +71,13 @@ financePlanEdit accounts debouncer (FinancePlan t s v note) = div [className "ro
   [ div [className "row"] $
     financePlanPicker
       :
-      ( map (onRecord #financePlanType) $ case t of
-          FinancePlanTypeTransfer t ->
-            map (onSum #_FinancePlanTypeTransfer) (transferEdit t)
-          FinancePlanTypeIncome t ->
-            map (onSum #_FinancePlanTypeIncome) (incomeEdit t)
-          FinancePlanTypeCost t ->
-            map (onSum #_FinancePlanTypeCost) (costEdit t)
-      )
+      map (onRecord #financePlanType) $ case t of
+        FinancePlanTypeTransfer t ->
+          map (onSum #_FinancePlanTypeTransfer) (transferEdit t)
+        FinancePlanTypeIncome t ->
+          map (onSum #_FinancePlanTypeIncome) (incomeEdit t)
+        FinancePlanTypeCost t ->
+          map (onSum #_FinancePlanTypeCost) (costEdit t)
   , div [className "row"] $
     map (onRecord #financePlanSchedule) (scheduledTransferEdit s)
   , div [className "row"]

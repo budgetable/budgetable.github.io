@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE RecordWildCards    #-}
 
 module View.Dollar where
 
@@ -28,8 +28,8 @@ import           Language.Javascript.JSaddle (ToJSVal, fromJSValUnchecked,
 
 
 data DollarEdit m = DollarEdit
-  { dollarEditIsPositive :: Bool
-  , dollarEditIsValid :: Bool
+  { dollarEditIsPositive      :: Bool
+  , dollarEditIsValid         :: Bool
   , dollarEditInvalidFeedback :: Html m Dollar
   }
 

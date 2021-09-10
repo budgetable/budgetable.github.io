@@ -1,10 +1,10 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
 
 
 module Main where
@@ -15,8 +15,11 @@ import           Chart                         (ChartData (..),
 import           Debouncer                     (Debouncer)
 import           Finance                       (balancesOverTime, everyMonth,
                                                 everyWeek, everyYear)
-import           Finance.Account               (blankAccount, mkAccounts, Accounts, AccountId, AccountAux, getBalances)
-import           Finance.Plan                  (FinancePlan (..), FinancePlanType (FinancePlanTypeTransfer),
+import           Finance.Account               (AccountAux, AccountId, Accounts,
+                                                blankAccount, getBalances,
+                                                mkAccounts)
+import           Finance.Plan                  (FinancePlan (..),
+                                                FinancePlanType (FinancePlanTypeTransfer),
                                                 Transfer (..))
 import           Finance.Schedule              (ScheduledTransfer (DateTransfer))
 import           View.Balances                 (balancesEdit)
@@ -48,8 +51,6 @@ import           Control.Lens.Combinators      (imap)
 import           Control.Lens.Tuple            (_1, _2)
 import           Control.Monad                 (void)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
-import           UnliftIO                      (newTVarIO)
-import           UnliftIO.Concurrent           (forkIO, threadDelay)
 import           Data.Aeson                    (toJSON)
 import           Data.Generics.Labels          ()
 import qualified Data.Map                      as Map
@@ -63,6 +64,8 @@ import           Language.Javascript.JSaddle   (JSVal, fromJSValUnchecked,
                                                 makeObject, toJSVal,
                                                 unsafeGetProp)
 import           Text.Read                     (readMaybe)
+import           UnliftIO                      (newTVarIO)
+import           UnliftIO.Concurrent           (forkIO, threadDelay)
 
 
 
@@ -75,12 +78,12 @@ data ComputeBatchPicker
 instance NFData ComputeBatchPicker
 
 data Model = Model
-  { balancesInEdit      :: [(AccountId, AccountAux)] -- FIXME make accounts instead of balances
-  , balancesSaved       :: Accounts
-  , startDate           :: Day
-  , financePlans        :: [(FinancePlan, Bool)]
-  , numberToCompute     :: Int
-  , computeBatch        :: ComputeBatchPicker
+  { balancesInEdit  :: [(AccountId, AccountAux)] -- FIXME make accounts instead of balances
+  , balancesSaved   :: Accounts
+  , startDate       :: Day
+  , financePlans    :: [(FinancePlan, Bool)]
+  , numberToCompute :: Int
+  , computeBatch    :: ComputeBatchPicker
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
 

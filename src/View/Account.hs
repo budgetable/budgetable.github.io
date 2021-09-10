@@ -1,14 +1,16 @@
+{-# LANGUAGE MultiWayIf          #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE MultiWayIf #-}
 
 module View.Account where
 
 import           Debouncer                   (Debouncer)
-import           Finance.Account             (AccountId (..), AccountAux (..), AccountLimit (..), outOfLimitError)
-import Finance.Dollar (Dollar)
+import           Finance.Account             (AccountAux (..), AccountId (..),
+                                              AccountLimit (..),
+                                              outOfLimitError)
+import           Finance.Dollar              (Dollar)
 import           View.Dollar                 (DollarEdit (..), dollarEdit)
 
 import           Prelude                     hiding (div, span)
@@ -21,11 +23,11 @@ import           Shpadoinkle.Html            (className, div, input', onInput,
                                               value)
 import           Shpadoinkle.Lens            (onRecord)
 
-import Control.Lens.Tuple (_1, _2)
-import Control.Monad.IO.Class (MonadIO)
+import           Control.Lens.Tuple          (_1, _2)
+import           Control.Monad.IO.Class      (MonadIO)
 import           Data.Generics.Labels        ()
+import           Data.Maybe                  (isNothing)
 import qualified Data.Text                   as T
-import Data.Maybe (isNothing)
 import           Language.Javascript.JSaddle (JSVal, fromJSValUnchecked,
                                               makeObject, toJSVal,
                                               unsafeGetProp)
@@ -54,9 +56,9 @@ accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux limit color
             in  "form-control" <> validity
         ]
     , div [className "invalid-feedback"]
-      [ if | name == "" -> "Account name can't be left blank"
+      [ if | name == ""   -> "Account name can't be left blank"
            | not isUnique -> "Account name should be unique"
-           | otherwise -> ""
+           | otherwise    -> ""
       ]
     ]
   , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $

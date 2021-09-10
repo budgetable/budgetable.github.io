@@ -1,20 +1,20 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Finance.Account where
 
 import           Finance.Dollar  (Dollar, dollarPrinter)
 
 import           Control.DeepSeq (NFData)
-import Data.Foldable (foldlM)
+import           Data.Aeson      (FromJSON, ToJSON)
+import           Data.Foldable   (foldlM)
+import           Data.Map        (Map)
+import qualified Data.Map        as Map
+import           Data.Maybe      (isJust)
+import           Data.String     (IsString)
 import           Data.Text       (Text)
 import qualified Data.Text       as T
-import Data.Maybe (isJust)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.String (IsString)
-import Data.Aeson (ToJSON, FromJSON)
 import           GHC.Generics    (Generic)
 
 
@@ -25,8 +25,8 @@ getBalances :: Accounts -> Balances
 getBalances = fmap accountAuxBalance
 
 data AccountAux = AccountAux
-  { accountAuxLimit :: AccountLimit
-  , accountAuxColor :: Text
+  { accountAuxLimit   :: AccountLimit
+  , accountAuxColor   :: Text
   , accountAuxBalance :: Dollar
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData AccountAux
