@@ -69,15 +69,14 @@ financePlanEdit :: forall m
                 -> Html m FinancePlan
 financePlanEdit accounts debouncer (FinancePlan t s v note) = div [className "row"]
   [ div [className "row"] $
-    financePlanPicker
-      :
-      map (onRecord #financePlanType) $ case t of
-        FinancePlanTypeTransfer t ->
-          map (onSum #_FinancePlanTypeTransfer) (transferEdit t)
-        FinancePlanTypeIncome t ->
-          map (onSum #_FinancePlanTypeIncome) (incomeEdit t)
-        FinancePlanTypeCost t ->
-          map (onSum #_FinancePlanTypeCost) (costEdit t)
+    let viewFinancePlan = map (onRecord #financePlanType) $ case t of
+          FinancePlanTypeTransfer t ->
+            map (onSum #_FinancePlanTypeTransfer) (transferEdit t)
+          FinancePlanTypeIncome t ->
+            map (onSum #_FinancePlanTypeIncome) (incomeEdit t)
+          FinancePlanTypeCost t ->
+            map (onSum #_FinancePlanTypeCost) (costEdit t)
+    in  financePlanPicker : viewFinancePlan
   , div [className "row"] $
     map (onRecord #financePlanSchedule) (scheduledTransferEdit s)
   , div [className "row"]
