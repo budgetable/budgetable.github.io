@@ -8,7 +8,6 @@ library
       Debouncer
       Finance
       Finance.Account
-      Finance.Balances
       Finance.DayOf
       Finance.Dollar
       Finance.Plan
