@@ -5,10 +5,9 @@
 module View.Balances where
 
 import           Debouncer                (Debouncer)
-import           Finance.Account          (Account (..),
+import           Finance.Account          (AccountId (..), Balances, AccountAux (..), Accounts,
                                            AccountLimit (NoRestriction),
                                            blankAccount, validate)
-import           Finance.Balances         (Balances)
 import           Finance.Dollar           (Dollar)
 import           View.Account             (accountEdit, accountView)
 import           View.Dollar              (dollarEdit, dollarView)
@@ -30,14 +29,14 @@ import           Data.Text                (Text)
 balancesEdit :: forall m
               . MonadJSM m
              => Debouncer m Text
-             -> [(Account, Dollar)]
-             -> Html m [(Account, Dollar)]
+             -> [(AccountId, AccountAux)]
+             -> Html m [(AccountId, AccountAux)]
 balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
   [ div [className "row d-grid", styleProp [("padding","0.5rem 0")]] [newButton]
   ]
   where
-    balanceEdit :: Int -> (Account, Dollar) -> Html m [(Account, Dollar)]
-    balanceEdit idx x@(a,v) = div [className "row account"] $
+    balanceEdit :: Int -> (AccountId, AccountAux) -> Html m [(AccountId, AccountAux)]
+    balanceEdit idx x@(a,AccountAux{accountAuxBalance = v}) = div [className "row account"] $
       (onSum (ix idx) <$> accountEdit (all (\(a',_) -> a' /= a) (take idx xs <> drop (idx + 1) xs)) debouncer x)
       <>
       [ div
@@ -51,22 +50,22 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
           ["Delete"]
         ]
       ]
-    newButton :: Html m [(Account, Dollar)]
+    newButton :: Html m [(AccountId, AccountAux)]
     newButton =
       button
         [ className "btn btn-secondary"
-        , onClick (<> [(blankAccount, 0)])
+        , onClick (<> [blankAccount])
         ]
         [text $ "Add New Account" <> if null xs then " (click me)" else ""]
 
-balancesView :: Balances -> Html m a
+balancesView :: Accounts -> Html m a -- FIXME make term name reference Accounts? Not balances?
 balancesView bs = table_ $ balanceView <$> Map.toList bs
   where
-    balanceView :: (Account, Dollar) -> Html m a
+    balanceView :: (AccountId, AccountAux) -> Html m a
     balanceView (a,v) = tr_
       [ td_
-        [ accountView a
+        [ accountView a (accountAuxLimit v)
         , ": "
         ]
-      , td_ [dollarView v]
+      , td_ [dollarView (accountAuxBalance v)]
       ]

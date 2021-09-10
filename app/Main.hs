@@ -15,9 +15,7 @@ import           Chart                         (ChartData (..),
 import           Debouncer                     (Debouncer)
 import           Finance                       (balancesOverTime, everyMonth,
                                                 everyWeek, everyYear)
-import           Finance.Account               (Account (..), blankAccount)
-import           Finance.Balances              (Balances, mkBalances)
-import           Finance.Dollar                (Dollar)
+import           Finance.Account               (blankAccount, mkAccounts, Accounts, AccountId, AccountAux, getBalances)
 import           Finance.Plan                  (FinancePlan (..), FinancePlanType (FinancePlanTypeTransfer),
                                                 Transfer (..))
 import           Finance.Schedule              (ScheduledTransfer (DateTransfer))
@@ -77,8 +75,8 @@ data ComputeBatchPicker
 instance NFData ComputeBatchPicker
 
 data Model = Model
-  { balancesInEdit      :: [(Account, Dollar)]
-  , balancesSaved       :: Balances
+  { balancesInEdit      :: [(AccountId, AccountAux)] -- FIXME make accounts instead of balances
+  , balancesSaved       :: Accounts
   , startDate           :: Day
   , financePlans        :: [(FinancePlan, Bool)]
   , numberToCompute     :: Int
@@ -86,14 +84,16 @@ data Model = Model
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
 
-batchComputed :: Model -> [(Day, Balances)]
-batchComputed Model{..} = take numberToCompute $
-  let daysComputed = balancesOverTime startDate balancesSaved (fst <$> financePlans)
-  in  case computeBatch of
-    PickerComputeDaily   -> daysComputed
-    PickerComputeWeekly  -> everyWeek daysComputed
-    PickerComputeMonthly -> everyMonth daysComputed
-    PickerComputeYearly  -> everyYear daysComputed
+batchComputed :: Model -> ChartData
+batchComputed Model{..} =
+  let computed = take numberToCompute $
+        let daysComputed = balancesOverTime startDate (getBalances balancesSaved) (fst <$> financePlans)
+        in  case computeBatch of
+          PickerComputeDaily   -> daysComputed
+          PickerComputeWeekly  -> everyWeek daysComputed
+          PickerComputeMonthly -> everyMonth daysComputed
+          PickerComputeYearly  -> everyYear daysComputed
+  in  ChartData computed balancesSaved
 
 #ifndef ghcjs_HOST_OS
 getContext :: IO JSVal
@@ -188,7 +188,7 @@ view today debouncer Model{..} = div [className "container"]
   where
     saveBalancesButton = button [className "btn btn-primary", onClick saveBalances] ["Save Balances"]
       where
-        saveBalances m@Model{balancesInEdit = inEdit} = case mkBalances inEdit of
+        saveBalances m@Model{balancesInEdit = inEdit} = case mkAccounts inEdit of
           Nothing -> m
           Just bs -> m {balancesSaved = bs}
     listOfFinancePlansEdit :: [(FinancePlan, Bool)] -> Html m [(FinancePlan, Bool)]
@@ -227,9 +227,9 @@ view today debouncer Model{..} = div [className "container"]
           where
             blankFinancePlan =
               FinancePlan
-                (FinancePlanTypeTransfer $ Transfer
-                blankAccount
-                blankAccount)
+                (FinancePlanTypeTransfer $
+                   uncurry (uncurry Transfer blankAccount)
+                      blankAccount)
                 (DateTransfer today)
                 0
                 ""
@@ -237,15 +237,16 @@ view today debouncer Model{..} = div [className "container"]
 app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
-  let emptyState = Model
-        { balancesInEdit  = []
-        , balancesSaved   = Map.empty
-        , startDate       = today
-        , financePlans    = []
-        , numberToCompute = 7
-        , computeBatch    = PickerComputeDaily
-        }
-  initialState <- fromMaybe emptyState <$> getStorage "budgetable"
+  initialState <-
+    let emptyState = Model
+          { balancesInEdit  = []
+          , balancesSaved   = Map.empty
+          , startDate       = today
+          , financePlans    = []
+          , numberToCompute = 7
+          , computeBatch    = PickerComputeDaily
+          }
+    in  fromMaybe emptyState <$> getStorage "budgetable"
   model <- newTVarIO initialState
   debouncer <- debounceRaw 1
   shpadoinkle id runSnabbdom model (view today debouncer) stage
@@ -253,12 +254,12 @@ app = do
   threadDelay 1000
 
   context <- getContext
-  let initialChart = InitialChart . ChartData $ batchComputed initialState
+  let initialChart = InitialChart (batchComputed initialState)
   chart <- newChart context =<< toJSVal (toJSON initialChart)
   let go () newState = do
         setStorage "budgetable" newState
         threadDelay 1000
-        let newChartData = ChartData (batchComputed newState)
+        let newChartData = batchComputed newState
         assignChartData chart =<< toJSVal (toJSON newChartData)
         updateChart chart
   void $ forkIO $ shouldUpdate go () model

@@ -1,18 +1,26 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Chart where
 
-import           Finance.Account    (Account (..))
-import           Finance.Balances   (Balances)
+import           Finance.Account    (AccountId, Balances, Accounts, AccountAux (..))
 import           Finance.Dollar     (Dollar, dollarPrinter)
 
 import           Data.Aeson         (ToJSON (..), Value (String), object, (.=))
+import Data.Maybe (fromJust)
 import           Data.Map           (Map)
 import qualified Data.Map           as Map
 import           Data.Text          (Text)
 import           Data.Time.Calendar (Day)
 
 
+-- | For updating Chart.js
+data ChartData = ChartData
+  { chartData :: [(Day, Balances)]
+  , chartDataAux :: Accounts
+  }
+
+-- | For setting-up Chart.js
 newtype InitialChart = InitialChart {getInitialChart :: ChartData}
 
 instance ToJSON InitialChart where
@@ -31,24 +39,24 @@ instance ToJSON InitialChart where
       ]
     ]
 
-
-newtype ChartData = ChartData {getChartData :: [(Day, Balances)]}
-
-transpose :: [Balances] -> Map Account [Dollar]
+transpose :: [Balances] -> Map AccountId [Dollar]
 transpose = Map.unionsWith (<>) . map (fmap (: []))
 
 instance ToJSON ChartData where
-  toJSON (ChartData xs) = object
-    [ "labels" .= (show . fst <$> xs)
+  toJSON (ChartData data' aux) = object
+    [ "labels" .= (show . fst <$> data')
     , "datasets" .=
-      ( let ys = Map.toList . transpose $ snd <$> xs
-            mkDataset :: (Account, [Dollar]) -> Value
-            mkDataset (Account name _ color, data') = object
-              [ "label" .= name
-              , "data" .= (dollarPrinter <$> data')
-              , "borderColor" .= color
-              , "backgroundColor" .= color
-              ]
-        in  mkDataset <$> ys
+      ( let transposedData :: [(AccountId, [Dollar])]
+            transposedData = Map.toList . transpose $ snd <$> data'
+            mkDataset :: (AccountId, [Dollar]) -> Value
+            mkDataset (name, dataSet) =
+              let AccountAux{accountAuxColor} = fromJust $ Map.lookup name aux
+              in  object
+                    [ "label" .= name
+                    , "data" .= (dollarPrinter <$> dataSet)
+                    , "borderColor" .= accountAuxColor
+                    , "backgroundColor" .= accountAuxColor
+                    ]
+        in  mkDataset <$> transposedData
       )
     ]

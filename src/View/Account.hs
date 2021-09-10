@@ -7,7 +7,7 @@
 module View.Account where
 
 import           Debouncer                   (Debouncer)
-import           Finance.Account             (Account (..), AccountLimit (..), outOfLimitError)
+import           Finance.Account             (AccountId (..), AccountAux (..), AccountLimit (..), outOfLimitError)
 import Finance.Dollar (Dollar)
 import           View.Dollar                 (DollarEdit (..), dollarEdit)
 
@@ -35,12 +35,12 @@ accountEdit :: forall m
              . MonadIO m
             => Bool
             -> Debouncer m T.Text
-            -> (Account, Dollar)
-            -> [Html m (Account, Dollar)]
-accountEdit isUnique debouncer (a@(Account name limit color), v) =
+            -> (AccountId, AccountAux)
+            -> [Html m (AccountId, AccountAux)]
+accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux limit color v) =
   [ div [className "col-xs-12 col-sm-6 col-lg-3"]
-    [ onRecord (_1 . #accountName) $ input'
-        [ value name
+    [ onRecord (_1 . #getAccountId) $ input'
+        [ value nameRaw
         , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
             o <- makeObject n
             v <- unsafeGetProp "value" o
@@ -60,9 +60,9 @@ accountEdit isUnique debouncer (a@(Account name limit color), v) =
       ]
     ]
   , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
-    onRecord (_1 . #accountLimit) $ accountLimitEdit limit
+    onRecord (_2 . #accountAuxLimit) $ accountLimitEdit limit
   , div [className "col-xs-12 col-sm-4 col-lg-2"] . (: []) $
-    onRecord (_1 . #accountColor) $ input'
+    onRecord (_2 . #accountAuxColor) $ input'
       [ value color
       , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
           o <- makeObject n
@@ -73,8 +73,8 @@ accountEdit isUnique debouncer (a@(Account name limit color), v) =
       , className "form-control"
       ]
   , div [className "col-xs-12 col-sm-4 col-lg-3"] . (: []) .
-    onRecord _2 $
-      let mOutOfLimit = outOfLimitError a v
+    onRecord (_2 . #accountAuxBalance) $
+      let mOutOfLimit = outOfLimitError name limit v
           params = DollarEdit
             { dollarEditIsPositive = False
             , dollarEditIsValid = isNothing mOutOfLimit
@@ -102,8 +102,8 @@ accountEdit isUnique debouncer (a@(Account name limit color), v) =
           ]
 
 
-accountView :: Account -> Html m a
-accountView (Account name limit _) = text $ name <> " (" <> l <> ")"
+accountView :: AccountId -> AccountLimit -> Html m a
+accountView (AccountId name) limit = text $ name <> " (" <> l <> ")"
   where
     l = case limit of
       NoRestriction -> "&plusmn;"

@@ -3,7 +3,7 @@
 
 module Finance where
 
-import           Finance.Balances            (Balances)
+import           Finance.Account            (Balances)
 import           Finance.Plan                (FinancePlan, applyTransaction)
 import           Finance.Schedule            (isApplicableOn)
 

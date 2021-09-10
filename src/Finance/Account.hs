@@ -14,10 +14,15 @@ import Data.Maybe (isJust)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.String (IsString)
+import Data.Aeson (ToJSON, FromJSON)
 import           GHC.Generics    (Generic)
 
 
 type Accounts = Map AccountId AccountAux
+type Balances = Map AccountId Dollar
+
+getBalances :: Accounts -> Balances
+getBalances = fmap accountAuxBalance
 
 data AccountAux = AccountAux
   { accountAuxLimit :: AccountLimit
@@ -35,7 +40,7 @@ instance NFData AccountLimit
 
 -- | An account with a unique identifier
 newtype AccountId = AccountId {getAccountId :: Text}
-  deriving (Show, Read, Eq, Ord, Generic, NFData, IsString)
+  deriving (Show, Read, Eq, Ord, Generic, NFData, IsString, ToJSON, FromJSON)
 
 blankAccount :: (AccountId, AccountAux)
 blankAccount = ("", AccountAux NoRestriction "" 0)

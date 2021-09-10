@@ -6,8 +6,8 @@
 module View.FinancePlan where
 
 import           Debouncer                   (Debouncer)
-import           Finance.Account             (Account (..),
-                                              AccountLimit (NoRestriction),
+import           Finance.Account             (AccountId (..),
+                                              AccountLimit (NoRestriction), AccountAux (..),
                                               blankAccount)
 import           Finance.Plan                (Cost (..), FinancePlan (..),
                                               Income (..), Transfer (..), FinancePlanType (..))
@@ -61,7 +61,7 @@ isFinancePlanPickedDifferent f p = case (f,p) of
 financePlanEdit :: forall m
                  . MonadJSM m
                 => MonadIO m
-                => Set Account
+                => Set AccountId
                 -> Debouncer m T.Text
                 -> FinancePlan
                 -> Html m FinancePlan
@@ -128,14 +128,15 @@ financePlanEdit accounts debouncer (FinancePlan t s v note) = div [className "ro
             if isFinancePlanPickedDifferent (financePlanType fOld) p
             then case p of
                   PickerFinancePlanTransfer ->
-                    fOld { financePlanType = FinancePlanTypeTransfer (Transfer blankAccount blankAccount) }
+                    fOld { financePlanType = FinancePlanTypeTransfer
+                           (uncurry (uncurry Transfer blankAccount) blankAccount) } -- FIXME more elegance
                   PickerFinancePlanIncome ->
-                    fOld { financePlanType = FinancePlanTypeIncome (Income blankAccount) }
+                    fOld { financePlanType = FinancePlanTypeIncome (uncurry Income blankAccount) }
                   PickerFinancePlanCost ->
-                    fOld { financePlanType = FinancePlanTypeCost (Cost blankAccount) }
+                    fOld { financePlanType = FinancePlanTypeCost (uncurry Cost blankAccount) }
             else fOld
     transferEdit :: Transfer -> [Html m Transfer]
-    transferEdit (Transfer from to) =
+    transferEdit (Transfer from _ to _) =
       [ div [className "col"] . (: []) $ div [className "form-group"]
         [ label_ ["From:"]
         , onRecord #transferFromAccount (accountPicker from)
@@ -147,7 +148,7 @@ financePlanEdit accounts debouncer (FinancePlan t s v note) = div [className "ro
       ]
 
     incomeEdit :: Income -> [Html m Income]
-    incomeEdit (Income a) =
+    incomeEdit (Income a _) =
       [ div [className "col"] . (: []) $ div [className "form-group"]
         [ label_ ["Account:"]
         , onRecord #incomeAccount (accountPicker a)
@@ -155,14 +156,14 @@ financePlanEdit accounts debouncer (FinancePlan t s v note) = div [className "ro
       ]
 
     costEdit :: Cost -> [Html m Cost]
-    costEdit (Cost a) =
+    costEdit (Cost a _) = -- FIXME use named field puns
       [ div [className "col"] . (: []) $ div [className "form-group"]
         [ label_ ["Account:"]
         , onRecord #costAccount (accountPicker a)
         ]
       ]
 
-    accountPicker :: Account -> Html m Account
+    accountPicker :: AccountId -> Html m AccountId
     accountPicker a =
       select
         [ value . T.pack $ show a
@@ -170,41 +171,41 @@ financePlanEdit accounts debouncer (FinancePlan t s v note) = div [className "ro
         , className "form-select"
         ] $
         option
-          [ value . T.pack $ show blankAccount
+          [ value . T.pack . show $ fst blankAccount
           , hidden True
           , disabled True
-          , selected (a == blankAccount)
+          , selected (a == fst blankAccount)
           ]
           ["-- Select a saved Account --"]
             : (mkAccount <$> Set.toList accounts)
       where
-        mkAccount a'@(Account name _ color) =
-          option [value . T.pack $ show a', selected (a' == a), styleProp [("background",color)]] [text name]
+        mkAccount a'@(AccountId name) =
+          option [value . T.pack $ show a', selected (a' == a)] [text name]
 
 
 financePlanView :: FinancePlan -> Html m a
 financePlanView (FinancePlan t s v note) = div [className "row"]
   [ div [className "col-sm-2"] [text note]
   , case t of
-      FinancePlanTypeTransfer (Transfer from to) ->
+      FinancePlanTypeTransfer (Transfer from (AccountAux fromLimit _ _) to (AccountAux toLimit _ _)) ->
         div [className "col-sm-6"] . (: []) $ div [className "row"]
-          [ centered $ accountView from
+          [ centered $ accountView from fromLimit
           , arrow
           , centered $ dollarView v
           , arrow
-          , centered $ accountView to
+          , centered $ accountView to toLimit
           ]
-      FinancePlanTypeIncome (Income a) ->
+      FinancePlanTypeIncome (Income a (AccountAux aLimit _ _)) -> -- FIXME use puns
         div [className "col-sm-6"] . (: []) $ div [className "row"]
           [ div [className "col"] []
           , div [className "col-sm-1"] []
           , centered $ dollarView v
           , arrow
-          , centered $ accountView a
+          , centered $ accountView a aLimit
           ]
-      FinancePlanTypeCost (Cost a) ->
+      FinancePlanTypeCost (Cost a (AccountAux aLimit _ _)) ->
         div [className "col-sm-6"] . (: []) $ div [className "row"]
-          [ centered $ accountView a
+          [ centered $ accountView a aLimit
           , arrow
           , centered $ dollarView v
           , div [className "col-sm-1"] []
