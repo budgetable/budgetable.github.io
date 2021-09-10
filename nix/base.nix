@@ -9,12 +9,12 @@ let
     , enableLibraryProfiling ? false
     , enableExecutableProfiling ? false
     , strictDeps ? false
-    , isJS ? false
     , system ? builtins.currentSystem
     , optimize ? true
     , shpadoinkle-path ? null
     }:
     let
+      isJS = true;
 
 
       # It's a shpadoinkle day

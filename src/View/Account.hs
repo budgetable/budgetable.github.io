@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf          #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
@@ -6,7 +7,11 @@
 module View.Account where
 
 import           Debouncer                   (Debouncer)
-import           Finance                     (Account (..), AccountLimit (..))
+import           Finance.Account             (AccountAux (..), AccountId (..),
+                                              AccountLimit (..),
+                                              outOfLimitError)
+import           Finance.Dollar              (Dollar)
+import           View.Dollar                 (DollarEdit (..), dollarEdit)
 
 import           Prelude                     hiding (div, span)
 import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
@@ -18,7 +23,10 @@ import           Shpadoinkle.Html            (className, div, input', onInput,
                                               value)
 import           Shpadoinkle.Lens            (onRecord)
 
+import           Control.Lens.Tuple          (_1, _2)
+import           Control.Monad.IO.Class      (MonadIO)
 import           Data.Generics.Labels        ()
+import           Data.Maybe                  (isNothing)
 import qualified Data.Text                   as T
 import           Language.Javascript.JSaddle (JSVal, fromJSValUnchecked,
                                               makeObject, toJSVal,
@@ -26,26 +34,37 @@ import           Language.Javascript.JSaddle (JSVal, fromJSValUnchecked,
 
 
 accountEdit :: forall m
-             . Functor m
-            => Debouncer m T.Text
-            -> Account
-            -> [Html m Account]
-accountEdit debouncer (Account name limit color) =
-  [ div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
-    onRecord #accountName $ input'
-      [ value name
-      , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
-          o <- makeObject n
-          v <- unsafeGetProp "value" o
-          t <- fromJSValUnchecked v
-          pure . pur $ const t
-      , placeholder "Account Name"
-      , className "form-control"
+             . MonadIO m
+            => Bool
+            -> Debouncer m T.Text
+            -> (AccountId, AccountAux)
+            -> [Html m (AccountId, AccountAux)]
+accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux limit color v) =
+  [ div [className "col-xs-12 col-sm-6 col-lg-3"]
+    [ onRecord (_1 . #getAccountId) $ input'
+        [ value nameRaw
+        , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+            o <- makeObject n
+            v <- unsafeGetProp "value" o
+            t <- fromJSValUnchecked v
+            pure . pur $ const t
+        , placeholder "Account Name"
+        , className $
+            let validity
+                  | name == "" || not isUnique = " is-invalid"
+                  | otherwise = ""
+            in  "form-control" <> validity
+        ]
+    , div [className "invalid-feedback"]
+      [ if | name == ""   -> "Account name can't be left blank"
+           | not isUnique -> "Account name should be unique"
+           | otherwise    -> ""
       ]
+    ]
   , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
-    onRecord #accountLimit $ accountLimitEdit limit
+    onRecord (_2 . #accountAuxLimit) $ accountLimitEdit limit
   , div [className "col-xs-12 col-sm-4 col-lg-2"] . (: []) $
-    onRecord #accountColor $ input'
+    onRecord (_2 . #accountAuxColor) $ input'
       [ value color
       , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
           o <- makeObject n
@@ -55,6 +74,17 @@ accountEdit debouncer (Account name limit color) =
       , placeholder "Color"
       , className "form-control"
       ]
+  , div [className "col-xs-12 col-sm-4 col-lg-3"] . (: []) .
+    onRecord (_2 . #accountAuxBalance) $
+      let mOutOfLimit = outOfLimitError name limit v
+          params = DollarEdit
+            { dollarEditIsPositive = False
+            , dollarEditIsValid = isNothing mOutOfLimit
+            , dollarEditInvalidFeedback = case mOutOfLimit of
+                Nothing -> ""
+                Just outOfLimit -> div [className "invalid-feedback"] [text outOfLimit]
+            }
+      in  dollarEdit params v
   ]
   where
     accountLimitEdit :: AccountLimit -> Html m AccountLimit
@@ -74,8 +104,8 @@ accountEdit debouncer (Account name limit color) =
           ]
 
 
-accountView :: Account -> Html m a
-accountView (Account name limit _) = text $ name <> " (" <> l <> ")"
+accountView :: AccountId -> AccountLimit -> Html m a
+accountView (AccountId name) limit = text $ name <> " (" <> l <> ")"
   where
     l = case limit of
       NoRestriction -> "&plusmn;"
