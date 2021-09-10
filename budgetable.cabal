@@ -10,6 +10,7 @@ library
       Finance.Account
       Finance.DayOf
       Finance.Dollar
+      Finance.Interest
       Finance.Plan
       Finance.Schedule
       View.Account
@@ -32,6 +33,7 @@ library
     , generic-lens
     , jsaddle
     , lens == 4.17.1
+    , scientific
     , text
     , time == 1.8.0.2
     
