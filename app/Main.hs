@@ -16,12 +16,11 @@ import           Debouncer                     (Debouncer)
 import           Finance                       (balancesOverTime, everyMonth,
                                                 everyWeek, everyYear)
 import           Finance.Account               (AccountAux, AccountId, Accounts,
-                                                blankAccount, getBalances,
-                                                mkAccounts)
+                                                blankAccount, mkAccounts)
 import           Finance.Plan                  (FinancePlan (..),
                                                 FinancePlanType (FinancePlanTypeTransfer),
                                                 Transfer (..))
-import           Finance.Schedule              (ScheduledTransfer (DateTransfer))
+import           Finance.Schedule              (Schedule (DateSchedule))
 import           View.Balances                 (balancesEdit)
 import           View.Day                      (dayEdit)
 import           View.FinancePlan              (financePlanEdit,
@@ -46,6 +45,7 @@ import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
 
 import           Control.DeepSeq               (NFData)
+import           Control.Lens                  (Lens', lens, (^.))
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
 import           Control.Lens.Tuple            (_1, _2)
@@ -78,7 +78,7 @@ data ComputeBatchPicker
 instance NFData ComputeBatchPicker
 
 data Model = Model
-  { balancesInEdit  :: [(AccountId, AccountAux)] -- FIXME make accounts instead of balances
+  { balancesInEdit  :: [(AccountId, AccountAux)]
   , balancesSaved   :: Accounts
   , startDate       :: Day
   , financePlans    :: [(FinancePlan, Bool)]
@@ -90,7 +90,7 @@ instance NFData Model
 batchComputed :: Model -> ChartData
 batchComputed Model{..} =
   let computed = take numberToCompute $
-        let daysComputed = balancesOverTime startDate (getBalances balancesSaved) (fst <$> financePlans)
+        let daysComputed = balancesOverTime startDate balancesSaved (fst <$> financePlans)
         in  case computeBatch of
           PickerComputeDaily   -> daysComputed
           PickerComputeWeekly  -> everyWeek daysComputed
@@ -124,8 +124,11 @@ view today debouncer Model{..} = div [className "container"]
   [ h1_ ["Budgetable"]
   , hr'_
   , h3_ ["Active Accounts"]
-  , onRecord #balancesInEdit $ balancesEdit debouncer balancesInEdit
-  , div [className "row d-grid"] [saveBalancesButton]
+  , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
+        editBalancesLens = lens (^. #balancesInEdit) $ \m inEdit -> case mkAccounts inEdit of
+          Nothing -> m {balancesInEdit = inEdit}
+          Just bs -> m {balancesInEdit = inEdit, balancesSaved = bs}
+    in  onRecord editBalancesLens $ balancesEdit debouncer balancesInEdit
   , hr'_
   , h3_ ["Finance Plans"]
   , onRecord #financePlans $ listOfFinancePlansEdit financePlans
@@ -189,11 +192,6 @@ view today debouncer Model{..} = div [className "container"]
     ]
   ]
   where
-    saveBalancesButton = button [className "btn btn-primary", onClick saveBalances] ["Save Balances"]
-      where
-        saveBalances m@Model{balancesInEdit = inEdit} = case mkAccounts inEdit of
-          Nothing -> m
-          Just bs -> m {balancesSaved = bs}
     listOfFinancePlansEdit :: [(FinancePlan, Bool)] -> Html m [(FinancePlan, Bool)]
     listOfFinancePlansEdit fs = div [id' "finance-plans"] $
       imap itemFinancePlansEdit fs <>
@@ -204,7 +202,7 @@ view today debouncer Model{..} = div [className "container"]
         itemFinancePlansEdit idx (f,isEditable) = div [className "row finance-plan"]
           [ div [className "col-xs-12 col-lg-11"] . (: []) $
               if isEditable
-              then onSum (ix idx . _1) (financePlanEdit (Map.keysSet balancesSaved) debouncer f)
+              then onSum (ix idx . _1) (financePlanEdit balancesSaved debouncer f)
               else financePlanView f
           , div [className "col-xs-12 col-lg-1"] $
             [ div [className "row"] . (: []) $ div [className "form-check"]
@@ -233,7 +231,7 @@ view today debouncer Model{..} = div [className "container"]
                 (FinancePlanTypeTransfer $
                    uncurry (uncurry Transfer blankAccount)
                       blankAccount)
-                (DateTransfer today)
+                (DateSchedule today)
                 0
                 ""
 

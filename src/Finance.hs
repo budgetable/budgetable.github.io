@@ -3,42 +3,31 @@
 
 module Finance where
 
-import           Finance.Account             (Balances)
+import           Finance.Account             (AccountAux (accountAuxBalance),
+                                              Accounts, Balances, applyInterest)
 import           Finance.Plan                (FinancePlan, applyTransaction)
 import           Finance.Schedule            (isApplicableOn)
 
-import           Control.Applicative         ((<|>))
-import           Control.DeepSeq             (NFData)
-import           Data.Attoparsec.Text        (Parser, char, digit, many1,
-                                              parseOnly)
 import           Data.Foldable               (foldl')
-import           Data.Map                    (Map)
-import qualified Data.Map                    as Map
-import           Data.Maybe                  (maybe)
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
-import           Data.Time.Calendar          (Day, addDays,
-                                              gregorianMonthLength, isLeapYear,
-                                              toGregorian)
-import           Data.Time.Calendar.MonthDay (monthAndDayToDayOfYear)
+import           Data.Time.Calendar          (Day, addDays, toGregorian)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
-import           GHC.Generics                (Generic)
-import           Text.Read                   (Read (readsPrec))
 
 
--- | Creates an infinite list of balances indexed by the day
+-- | Creates an infinite list of balances indexed by the day. Note, interest is applied /before/
+-- finance plans are applied, as its assumed that interest takes precedence to customer action.
 balancesOverTime :: Day -- ^ Today
-                 -> Balances -- ^ Initial state
+                 -> Accounts -- ^ Initial state
                  -> [FinancePlan] -- ^ Things that happen
                  -> [(Day, Balances)]
 balancesOverTime today accounts financePlans =
-  (today, newAccounts) : balancesOverTime (addDays 1 today) newAccounts financePlans
+  (today, accountAuxBalance <$> newAccounts) : balancesOverTime (addDays 1 today) newAccounts financePlans
   where
+    newAccounts :: Accounts
     newAccounts =
-      let go acc f
+      let applyFinancePlan acc f
             | f `isApplicableOn` today = applyTransaction acc f
             | otherwise = acc
-      in  foldl' go accounts financePlans
+      in  foldl' applyFinancePlan (applyInterest today <$> accounts) financePlans
 
 everyWeek :: [(Day, Balances)] -> [(Day, Balances)]
 everyWeek [] = []

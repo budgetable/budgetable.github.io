@@ -6,23 +6,18 @@
 
 module View.Dollar where
 
-import           Finance.Dollar              (Cent (..), Dollar (..),
-                                              dollarParser, dollarPrinter)
+import           Finance.Dollar              (Dollar (..), dollarParser,
+                                              dollarPrinter)
 
 import           Prelude                     hiding (div, min, span)
-import           Shpadoinkle                 (Html, JSM, MonadJSM, RawEvent,
-                                              RawNode (..), liftJSM, listenRaw,
-                                              text)
+import           Shpadoinkle                 (Html, JSM, RawEvent, RawNode (..),
+                                              listenRaw, text)
 import           Shpadoinkle.Console         (warn)
 import           Shpadoinkle.Continuation    (Continuation, done, pur)
-import           Shpadoinkle.Html            (className, div, i, input', min,
-                                              onBlurC, onChange, span, step,
-                                              type', value)
+import           Shpadoinkle.Html            (className, div, input', min, span,
+                                              step, type', value)
 
-import           Control.Arrow               (second)
 import           Data.Attoparsec.Text        (parseOnly)
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
 import           Language.Javascript.JSaddle (ToJSVal, fromJSValUnchecked,
                                               makeObject, unsafeGetProp)
 
@@ -34,7 +29,7 @@ data DollarEdit m = DollarEdit
   }
 
 
-dollarEdit :: forall m. MonadJSM m => DollarEdit m -> Dollar -> Html m Dollar
+dollarEdit :: forall m. DollarEdit m -> Dollar -> Html m Dollar
 dollarEdit DollarEdit{..} d = div [className "input-group mb-3"]
   [ div [className "input-group-prepend"] [span [className "input-group-text"] ["$"]]
   , input' $

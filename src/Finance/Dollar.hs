@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiWayIf                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# OPTIONS_GHC -fno-warn-identities #-}
 
 module Finance.Dollar where
 
@@ -15,12 +16,12 @@ import           GHC.Generics         (Generic)
 
 -- | Money, in terms of cent (lossless compared to 'Double')
 newtype Cent = Cent {getCent :: Integer}
-  deriving (Show, Read, Eq, Ord, Num, Generic)
+  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum)
 instance NFData Cent
 
 -- | Cent, but with a prettier format
 newtype Dollar = Dollar {getDollar :: Cent}
-  deriving (Show, Read, Eq, Ord, Num, Generic)
+  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum)
 instance NFData Dollar
 dollarPrinter :: Dollar -> Text
 dollarPrinter (Dollar (Cent xs)) =

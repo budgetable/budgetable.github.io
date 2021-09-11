@@ -56,6 +56,7 @@ unsafeValueToMonthPicker x = case x of
   10 -> Oct
   11 -> Nov
   12 -> Dec
+  _  -> error $ "Value is not proper range (1-12): " <> show x
 
 dayEdit :: Day -> Html m Day
 dayEdit day = div [className "row"]

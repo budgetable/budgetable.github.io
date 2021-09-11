@@ -1,23 +1,26 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE OverloadedLabels  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Finance.Plan where
 
-import           Finance.Account  (AccountAux (accountAuxLimit), AccountId,
-                                   AccountLimit (OnlyNegative, OnlyPositive),
-                                   Balances)
-import           Finance.Dollar   (Dollar)
-import           Finance.Schedule (Schedulable (..), ScheduledTransfer)
+import           Finance.Account      (AccountAux (..), AccountId,
+                                       AccountLimit (OnlyNegative, OnlyPositive),
+                                       Accounts)
+import           Finance.Dollar       (Dollar)
+import           Finance.Schedule     (Schedulable (..), Schedule)
 
-import           Control.DeepSeq  (NFData)
-import qualified Data.Map         as Map
-import           Data.Text        (Text)
-import           GHC.Generics     (Generic)
+import           Control.DeepSeq      (NFData)
+import           Control.Lens         ((%~), (.~))
+import           Data.Generics.Labels ()
+import qualified Data.Map             as Map
+import           Data.Text            (Text)
+import           GHC.Generics         (Generic)
 
 
 class ApplyTransaction a where
-  applyTransaction :: Balances -> a -> Balances
+  applyTransaction :: Accounts -> a -> Accounts
 
 -- | A transfer with its schedule, accounts, and value
 data Transfer = Transfer
@@ -51,7 +54,7 @@ instance NFData FinancePlanType
 
 data FinancePlan = FinancePlan
   { financePlanType     :: FinancePlanType -- ^ type of the financial plan
-  , financePlanSchedule :: ScheduledTransfer -- ^ when the finance plan is scheduled
+  , financePlanSchedule :: Schedule -- ^ when the finance plan is scheduled
   , financePlanValue    :: Dollar -- ^ the value of the finance plan
   , financePlanNote     :: Text -- ^ optional note for reference
   } deriving (Show, Read, Eq, Ord, Generic)
@@ -61,23 +64,22 @@ instance Schedulable FinancePlan where
 instance ApplyTransaction FinancePlan where
   applyTransaction balances FinancePlan{financePlanType, financePlanValue = x} = case financePlanType of
     FinancePlanTypeTransfer (Transfer f faux t taux) -> case (Map.lookup f balances, Map.lookup t balances) of
-      (Just fromBal, Just toBal)
+      (Just AccountAux{accountAuxBalance = fromBal}, Just AccountAux{accountAuxBalance = toBal})
         | accountAuxLimit faux == OnlyPositive && x > fromBal ->
-          Map.insert f 0 . Map.insert t (toBal + fromBal) $ balances -- cannibalizes `from`
+          Map.adjust (#accountAuxBalance .~ 0) f
+          . Map.adjust (#accountAuxBalance .~ (toBal + fromBal)) t
+          $ balances -- cannibalizes `from`
         | accountAuxLimit taux == OnlyNegative && x > negate toBal ->
-          Map.insert f (fromBal - negate toBal) . Map.insert t 0 $ balances -- pays off `to`
+          Map.adjust (#accountAuxBalance .~ (fromBal + toBal)) f
+          . Map.adjust (#accountAuxBalance .~ 0) t
+          $ balances -- pays off `to`
         | otherwise ->
-          Map.insert f (fromBal - x) . Map.insert t (toBal + x) $ balances
+          Map.adjust (#accountAuxBalance %~ (\y -> y - x)) f
+          . Map.adjust (#accountAuxBalance %~ (+ x)) t
+          $ balances
       _ -> balances -- fail when non-existent
-    FinancePlanTypeIncome (Income a aux) -> case Map.lookup a balances of
-      Just ys
-        | accountAuxLimit aux == OnlyNegative && x > negate ys ->
-          Map.insert "__unclaimed_income" (x - negate ys) . Map.insert a 0 $ balances
-        | otherwise -> Map.insert a (ys + x) balances
-      Nothing -> balances
-    FinancePlanTypeCost (Cost a aux) -> case Map.lookup a balances of
-      Just ys
-        | accountAuxLimit aux == OnlyPositive && x > ys ->
-          Map.insert "__unpaid_cost" (x - ys) . Map.insert a 0 $ balances -- FIXME make discrete?
-        | otherwise -> Map.insert a (ys - x) balances
-      Nothing -> balances
+    -- NOTE the following assumes neither Income or Cost are applied to OnlyNegative or OnlyPositive, respectively
+    FinancePlanTypeIncome Income{incomeAccount} ->
+      Map.adjust (#accountAuxBalance %~ (+ x)) incomeAccount balances
+    FinancePlanTypeCost Cost{costAccount} ->
+      Map.adjust (#accountAuxBalance %~ (\y -> y - x)) costAccount balances
