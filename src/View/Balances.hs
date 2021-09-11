@@ -6,23 +6,18 @@ module View.Balances where
 
 import           Debouncer                (Debouncer)
 import           Finance.Account          (AccountAux (..), AccountId (..),
-                                           AccountLimit (NoRestriction),
-                                           Accounts, Balances, blankAccount,
-                                           validate)
-import           Finance.Dollar           (Dollar)
+                                           Accounts, blankAccount)
 import           View.Account             (accountEdit, accountView)
-import           View.Dollar              (dollarEdit, dollarView)
+import           View.Dollar              (dollarView)
 
 import           Prelude                  hiding (div)
 import           Shpadoinkle              (Html, MonadJSM, text)
-import           Shpadoinkle.Html         (button, className, div, div_, form_,
-                                           i, id', li_, onClick, span_,
-                                           styleProp, table_, td_, tr_, ul_)
+import           Shpadoinkle.Html         (button, className, div, id', onClick,
+                                           styleProp, table_, td_, tr_)
 import           Shpadoinkle.Lens         (onSum)
 
 import           Control.Lens.At          (ix)
 import           Control.Lens.Combinators (imap)
-import           Control.Lens.Tuple       (_1, _2)
 import qualified Data.Map                 as Map
 import           Data.Text                (Text)
 
@@ -37,16 +32,16 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
   ]
   where
     balanceEdit :: Int -> (AccountId, AccountAux) -> Html m [(AccountId, AccountAux)]
-    balanceEdit idx x@(a,AccountAux{accountAuxBalance = v}) = div [className "row account"] $
+    balanceEdit idx x@(a,_) = div [className "row account"] $
       (onSum (ix idx) <$> accountEdit (all (\(a',_) -> a' /= a) (take idx xs <> drop (idx + 1) xs)) debouncer x)
       <>
       [ div
-        [ className "col-xs-12 col-sm-4 col-lg-1 d-grid"
+        [ className "col-xs-12 d-grid"
         , styleProp [("margin-top", "0"),("padding-bottom", "0.5rem")]
         ]
         [ button
           [ className "btn btn-secondary"
-          , onClick $ \xs -> take idx xs <> drop (idx + 1) xs
+          , onClick $ \xsOld -> take idx xsOld <> drop (idx + 1) xsOld
           ]
           ["Delete"]
         ]

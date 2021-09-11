@@ -1,21 +1,25 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns             #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
 module Finance.Account where
 
-import           Finance.Dollar  (Dollar, dollarPrinter)
+import           Finance.Dollar     (Dollar, dollarPrinter)
+import           Finance.Interest   (CompoundingInterest (..),
+                                     makeInterestIfApplicable)
 
-import           Control.DeepSeq (NFData)
-import           Data.Aeson      (FromJSON, ToJSON)
-import           Data.Foldable   (foldlM)
-import           Data.Map        (Map)
-import qualified Data.Map        as Map
-import           Data.Maybe      (isJust)
-import           Data.String     (IsString)
-import           Data.Text       (Text)
-import qualified Data.Text       as T
-import           GHC.Generics    (Generic)
+import           Control.DeepSeq    (NFData)
+import           Data.Aeson         (FromJSON, ToJSON)
+import           Data.Foldable      (foldlM)
+import           Data.Map           (Map)
+import qualified Data.Map           as Map
+import           Data.Maybe         (isJust)
+import           Data.String        (IsString)
+import           Data.Text          (Text)
+import qualified Data.Text          as T
+import           Data.Time.Calendar (Day)
+import           GHC.Generics       (Generic)
 
 
 type Accounts = Map AccountId AccountAux
@@ -25,11 +29,38 @@ getBalances :: Accounts -> Balances
 getBalances = fmap accountAuxBalance
 
 data AccountAux = AccountAux
-  { accountAuxLimit   :: AccountLimit
-  , accountAuxColor   :: Text
-  , accountAuxBalance :: Dollar
+  { accountAuxLimit    :: AccountLimit
+  , accountAuxColor    :: Text
+  , accountAuxBalance  :: Dollar
+  , accountAuxInterest :: Maybe CompoundingInterest
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData AccountAux
+
+-- makeInterestFinancePlan :: Day -> AccountId -> AccountAux -> Maybe FinancePlan
+-- makeInterestFinancePlan today accountId accountAux@AccountAux{accountAuxBalance,accountAuxInterest} = case accountAuxInterest of
+--   Nothing -> Nothing
+--   Just i@CompoundingInterest{compoundingInterestInterval} -> Just $ FinancePlan
+--     { financePlanType = FinancePlanIncome $ Income accountId accountAux
+--     , financePlanSchedule = RepeatingSchedule compoundingInterestInterval
+--     , financePlanValue = makeInterestIfApplicable i accountAuxBalance today
+--     , financePlanNote = "Account " <> T.pack (show accountId) <> " applied interest"
+--     }
+
+applyInterest :: Day -> AccountAux -> AccountAux
+applyInterest day a@AccountAux{accountAuxBalance,accountAuxInterest,accountAuxLimit} = case accountAuxInterest of
+  Nothing -> a
+  Just i ->
+    a { accountAuxBalance =
+        let newBalance = accountAuxBalance + makeInterestIfApplicable i accountAuxBalance day
+        in  case accountAuxLimit of
+          NoRestriction -> newBalance
+          OnlyPositive
+            | newBalance < 0 -> 0
+            | otherwise -> newBalance
+          OnlyNegative
+            | newBalance > 0 -> 0
+            | otherwise -> newBalance
+      }
 
 data AccountLimit
   = NoRestriction
@@ -43,7 +74,15 @@ newtype AccountId = AccountId {getAccountId :: Text}
   deriving (Show, Read, Eq, Ord, Generic, NFData, IsString, ToJSON, FromJSON)
 
 blankAccount :: (AccountId, AccountAux)
-blankAccount = ("", AccountAux NoRestriction "" 0)
+blankAccount =
+  ( ""
+  , AccountAux
+    { accountAuxLimit = NoRestriction
+    , accountAuxColor = ""
+    , accountAuxBalance = 0
+    , accountAuxInterest = Nothing
+    }
+  )
 
 outOfLimitError :: AccountId -> AccountLimit -> Dollar -> Maybe Text
 outOfLimitError name limit v = case limit of
@@ -63,8 +102,8 @@ validate name limit v
   | otherwise = outOfLimitError name limit v
 
 addAccount :: Accounts -> AccountId -> AccountAux -> Maybe Accounts
-addAccount acc name aux@(AccountAux limit _ v)
-  | isJust (validate name limit v) = Nothing
+addAccount acc name aux@AccountAux{accountAuxLimit,accountAuxBalance}
+  | isJust (validate name accountAuxLimit accountAuxBalance) = Nothing
   | Map.null (Map.filterWithKey (\a' _ -> a' == name) acc) =
       pure $ Map.insert name aux acc
   | otherwise = Nothing

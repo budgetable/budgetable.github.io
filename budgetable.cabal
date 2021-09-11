@@ -18,7 +18,8 @@ library
       View.Day
       View.Dollar
       View.FinancePlan
-      View.ScheduledTransfer
+      View.Interest
+      View.Schedule
   hs-source-dirs:      src
   build-depends:
       base ^>=4.12.0.0
@@ -36,6 +37,27 @@ library
     , scientific
     , text
     , time == 1.8.0.2
+  default-language:    Haskell2010
+  ghc-options:
+    -Wall
+    -Werror
+    -Wcompat
+    -fwarn-redundant-constraints
+    -fwarn-incomplete-uni-patterns
+    -fwarn-tabs
+    -fwarn-incomplete-record-updates
+    -fwarn-identities
+  ghcjs-options:
+    -Wall
+    -Werror
+    -Wcompat
+    -fno-warn-missing-home-modules
+    -fwarn-redundant-constraints
+    -fwarn-incomplete-uni-patterns
+    -fwarn-tabs
+    -fwarn-incomplete-record-updates
+    -fwarn-identities
+    -O2
     
 
 executable budgetable-app

@@ -10,8 +10,6 @@ import           Finance.Dollar     (Dollar, dollarPrinter)
 import           Data.Aeson         (ToJSON (..), Value (String), object, (.=))
 import           Data.Map           (Map)
 import qualified Data.Map           as Map
-import           Data.Maybe         (fromJust)
-import           Data.Text          (Text)
 import           Data.Time.Calendar (Day)
 
 
@@ -51,7 +49,9 @@ instance ToJSON ChartData where
             transposedData = Map.toList . transpose $ snd <$> data'
             mkDataset :: (AccountId, [Dollar]) -> Value
             mkDataset (name, dataSet) =
-              let AccountAux{accountAuxColor} = fromJust $ Map.lookup name aux
+              let AccountAux{accountAuxColor} = case Map.lookup name aux of
+                    Nothing -> error $ "Can't find color " <> show name <> " in " <> show aux
+                    Just x -> x
               in  object
                     [ "label" .= name
                     , "data" .= (dollarPrinter <$> dataSet)
