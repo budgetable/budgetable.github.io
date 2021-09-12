@@ -33,14 +33,15 @@ import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 shpadoinkle, text)
 import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
-import           Shpadoinkle.Html              (a, button, canvas', checked,
-                                                className, debounceRaw, div,
-                                                h1_, h2_, h3_, h4_, height,
-                                                hr'_, href, id', input', label,
-                                                min, onCheck, onClick, onOption,
-                                                option, p, select, selected,
-                                                step, styleProp, target, type',
-                                                value, width, h5, textProperty, button', tabIndex, p_)
+import           Shpadoinkle.Html              (a, button, button', canvas',
+                                                checked, className, debounceRaw,
+                                                div, h1_, h2_, h3_, h4_, h5,
+                                                height, hr'_, href, id', input',
+                                                label, min, onCheck, onClick,
+                                                onOption, option, p, p_, select,
+                                                selected, step, styleProp,
+                                                tabIndex, target, textProperty,
+                                                type', value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
@@ -50,26 +51,30 @@ import           Control.Lens                  (Lens', lens, (^.))
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
 import           Control.Lens.Tuple            (_1, _2, _3)
-import           Control.Monad                 (void, when, (<=<))
+import           Control.Monad                 (void, when)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
 import           Data.Binary                   (Binary)
-import qualified Data.Binary as B
+import qualified Data.Binary                   as B
+import qualified Data.ByteString               as BS
+import qualified Data.ByteString.Base64        as BS64
+import qualified Data.ByteString.Lazy          as LBS
 import           Data.Generics.Labels          ()
 import qualified Data.Map                      as Map
 import           Data.Maybe                    (fromJust)
-import Data.Monoid (First (..))
+import           Data.Monoid                   (First (..))
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import qualified Data.Text.Encoding            as T
 import           Data.Time.Calendar            (Day)
 import           Data.Time.Clock               (getCurrentTime, utctDay)
-import qualified Data.ByteString.Base64        as BS64
-import qualified Data.ByteString.Lazy          as LBS
 import           GHC.Generics                  (Generic)
+import qualified JavaScript.Array.Internal     as A
+import qualified JavaScript.TypedArray         as TA
 import           Language.Javascript.JSaddle   (JSVal, fromJSValUnchecked,
                                                 makeObject, toJSVal,
                                                 unsafeGetProp)
+import           System.IO.Unsafe              (unsafePerformIO)
 import           Text.Read                     (readMaybe)
 import           UnliftIO                      (newTVarIO, readTVarIO)
 import           UnliftIO.Concurrent           (forkIO, threadDelay)
@@ -95,6 +100,42 @@ data Model = Model
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
 instance Binary Model
+
+bufferOverByteString :: (TA.Uint8Array -> IO TA.Uint8Array) -> BS.ByteString -> IO BS.ByteString
+bufferOverByteString f b = do
+  buff <- do
+    arr <- A.fromListIO =<< traverse toJSVal (BS.unpack b)
+    arrayToUint8Array arr
+  newBuff <- f buff
+  fmap BS.pack $ traverse fromJSValUnchecked =<< A.toListIO =<< uint8ArrayToArray newBuff
+
+encodeForHash :: Model -> IO Text
+encodeForHash m = do
+  deflated <- bufferOverByteString deflatePako . LBS.toStrict $ B.encode m
+  pure . T.decodeUtf8 $ BS64.encode deflated
+
+decodeFromHash :: Text -> IO (Maybe Model)
+decodeFromHash t = do
+  let mCompressed = getByteString t
+  mDecompressed <- sequence $ bufferOverByteString inflatePako <$> mCompressed
+  pure $ getModel =<< mDecompressed
+  where
+    hush (Left _)  = Nothing
+    hush (Right x) = Just x
+    getModel :: BS.ByteString -> Maybe Model
+    getModel =
+        fmap (^. _3)
+      . hush
+      . B.decodeOrFail
+      . LBS.fromStrict
+    getByteString :: Text -> Maybe BS.ByteString
+    getByteString x
+      | T.null x = Nothing
+      | otherwise =
+          hush -- either to maybe
+        . BS64.decode -- decode base64 into bytes
+        . T.encodeUtf8 -- turn into strict bytestring
+        $ T.tail x -- take away first #
 
 emptyModel :: Day -> Model
 emptyModel day = Model
@@ -128,27 +169,79 @@ assignChartData :: JSVal -> JSVal -> IO ()
 assignChartData = error "Must use in GHCjs"
 getHash :: IO Text
 getHash = error "Must use in GHCjs"
+getHrefWithoutHash :: IO Text
+getHrefWithoutHash = error "Must use in GHCjs"
+deflatePako :: TA.Uint8Array -> IO TA.Uint8Array
+deflatePako = error "Must use in GHCjs"
+inflatePako :: TA.Uint8Array -> IO TA.Uint8Array
+inflatePako = error "Must use in GHCjs"
+uint8ArrayToArray :: TA.Uint8Array -> IO A.JSArray
+uint8ArrayToArray = error "Must use in GHCjs"
+arrayToUint8Array :: A.JSArray -> IO TA.Uint8Array
+arrayToUint8Array = error "Must use in GHCjs"
 #else
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
 foreign import javascript unsafe "$1.update();" updateChart :: JSVal -> IO ()
 foreign import javascript unsafe "$1.data = $2;" assignChartData :: JSVal -> JSVal -> IO ()
 foreign import javascript unsafe "$r = window.location.hash;" getHash' :: IO JSVal
+foreign import javascript unsafe "$r = window.location.href;" getHref' :: IO JSVal
+foreign import javascript unsafe "$r = pako['deflate']($1);" deflatePako :: TA.Uint8Array -> IO TA.Uint8Array
+foreign import javascript unsafe "$r = pako['inflate']($1);" inflatePako :: TA.Uint8Array -> IO TA.Uint8Array
+foreign import javascript unsafe "$r = Array.from($1);" uint8ArrayToArray :: TA.Uint8Array -> IO A.JSArray
+foreign import javascript unsafe "$r = new Uint8Array($1);" arrayToUint8Array :: A.JSArray -> IO TA.Uint8Array
 getHash :: IO Text
 getHash = fromJSValUnchecked =<< getHash'
+getHrefWithoutHash :: IO Text
+getHrefWithoutHash = T.takeWhile (/= '#') <$> (fromJSValUnchecked =<< getHref')
 #endif
 
 view :: forall m
       . MonadJSM m
      => Day
+     -> Text
      -> Debouncer m Text
      -> Model
      -> Html m Model
-view today debouncer Model{..} = div [className "container"]
+view today currentHref debouncer currentModel@Model{..} = div [className "container"]
   [ div [className "row"]
     [ div [className "col"] . (: []) $ h1_ ["Budgetable.org"]
     , div [className "col", styleProp [("text-align","right")]]
       [ button
+        [ className "btn btn-secondary"
+        , textProperty "data-bs-toggle" ("modal" :: Text)
+        , textProperty "data-bs-target" ("#dialog-import" :: Text)
+        ] ["Import"]
+      , button
+        [ className "btn btn-secondary"
+        , textProperty "data-bs-toggle" ("modal" :: Text)
+        , textProperty "data-bs-target" ("#dialog-export" :: Text)
+        ] ["Export"]
+      , div [className "modal fade", tabIndex (-1), id' "dialog-export"]
+        [ div [className "modal-dialog"]
+          [ div [className "modal-content"] $
+            let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
+                shareLink = currentHref <> "#" <> unsafePerformIO (encodeForHash currentModel)
+            in  [ div [className "modal-header"]
+                  [ h5 [className "modal-title"] ["Export"]
+                  , button' [className "btn-close", dismiss]
+                  ]
+                , div [className "modal-body"]
+                  [ p_
+                    [ "Share link: "
+                    , a [ href shareLink
+                        , target "_blank"
+                        ] [text shareLink]
+                    ]
+                  ]
+                , div [className "modal-footer"]
+                  [ button [className "btn btn-secondary", dismiss]
+                    ["Close"]
+                  ]
+                ]
+          ]
+        ]
+      , button
         [ className "btn btn-secondary"
         , textProperty "data-bs-toggle" ("modal" :: Text)
         , textProperty "data-bs-target" ("#dialog-new" :: Text)
@@ -291,32 +384,14 @@ app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
   initialState <- do
-    let hush (Left _) = Nothing
-        hush (Right x) = Just x
-        hashToModel :: Text -> Maybe Model
-        hashToModel = getModel <=< getByteString
-          where
-            getModel :: LBS.ByteString -> Maybe Model
-            getModel =
-                fmap (^. _3)
-              . hush
-              . B.decodeOrFail
-            getByteString :: Text -> Maybe LBS.ByteString
-            getByteString x
-              | T.null x = Nothing
-              | otherwise =
-                  fmap LBS.fromStrict
-                . hush -- either to maybe
-                . BS64.decode -- decode base64 into bytes
-                . T.encodeUtf8 -- turn into strict bytestring
-                $ T.tail x -- take away first #
-    mHash <- First . hashToModel <$> getHash
+    mHash <- First <$> (decodeFromHash =<< getHash)
     mStored <- First <$> getStorage "budgetable"
     let justEmptyModel = First . Just $ emptyModel today
     pure . fromJust . getFirst $ mHash <> mStored <> justEmptyModel
   model <- newTVarIO initialState
   debouncer <- debounceRaw 1
-  shpadoinkle id runSnabbdom model (view today debouncer) stage
+  currentHref <- getHrefWithoutHash
+  shpadoinkle id runSnabbdom model (view today currentHref debouncer) stage
 
   threadDelay 1000
 

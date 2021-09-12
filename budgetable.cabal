@@ -78,6 +78,7 @@ executable budgetable-app
     , containers
     , deepseq
     , generic-lens
+    , ghcjs-base
     , jsaddle
     , lens == 4.17.1
     , stm
