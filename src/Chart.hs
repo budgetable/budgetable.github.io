@@ -1,23 +1,23 @@
-{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Chart where
 
-import           Finance.Account    (AccountAux (..), AccountId, Accounts,
+import           Finance.Account    (AccountId,
                                      Balances)
 import           Finance.Dollar     (Dollar, dollarPrinter)
 
 import           Data.Aeson         (ToJSON (..), Value (String), object, (.=))
 import           Data.Map           (Map)
 import qualified Data.Map           as Map
+import Data.Text (Text)
 import           Data.Time.Calendar (Day)
 
 
 -- | For updating Chart.js
 data ChartData = ChartData
-  { chartData    :: [(Day, Balances)]
-  , chartDataAux :: Accounts
-  }
+  { chartData       :: [(Day, Balances)]
+  , chartDataColors :: Map AccountId Text -- ^ Color / AccountId mapping
+  } deriving (Eq)
 
 -- | For setting-up Chart.js
 newtype InitialChart = InitialChart {getInitialChart :: ChartData}
@@ -48,16 +48,14 @@ instance ToJSON ChartData where
       ( let transposedData :: [(AccountId, [Dollar])]
             transposedData = Map.toList . transpose $ snd <$> data'
             mkDataset :: (AccountId, [Dollar]) -> Value
-            mkDataset (name, dataSet) =
-              let AccountAux{accountAuxColor} = case Map.lookup name aux of
-                    Nothing -> error $ "Can't find color " <> show name <> " in " <> show aux
-                    Just x -> x
-              in  object
-                    [ "label" .= name
-                    , "data" .= (dollarPrinter <$> dataSet)
-                    , "borderColor" .= accountAuxColor
-                    , "backgroundColor" .= accountAuxColor
-                    ]
+            mkDataset (name, dataSet) = case Map.lookup name aux of
+              Nothing -> error $ "Can't find color " <> show name <> " in " <> show aux
+              Just color -> object
+                [ "label" .= name
+                , "data" .= (dollarPrinter <$> dataSet)
+                , "borderColor" .= color
+                , "backgroundColor" .= color
+                ]
         in  mkDataset <$> transposedData
       )
     ]

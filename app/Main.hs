@@ -15,7 +15,7 @@ import           Chart                         (ChartData (..),
 import           Debouncer                     (Debouncer)
 import           Finance                       (balancesOverTime, everyMonth,
                                                 everyWeek, everyYear)
-import           Finance.Account               (AccountAux, AccountId, Accounts,
+import           Finance.Account               (AccountAux (accountAuxColor), AccountId, Accounts,
                                                 blankAccount, mkAccounts)
 import           Finance.Plan                  (FinancePlan (..),
                                                 FinancePlanType (FinancePlanTypeTransfer),
@@ -49,7 +49,7 @@ import           Control.Lens                  (Lens', lens, (^.))
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
 import           Control.Lens.Tuple            (_1, _2)
-import           Control.Monad                 (void)
+import           Control.Monad                 (void, when)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
 import           Data.Generics.Labels          ()
@@ -64,7 +64,7 @@ import           Language.Javascript.JSaddle   (JSVal, fromJSValUnchecked,
                                                 makeObject, toJSVal,
                                                 unsafeGetProp)
 import           Text.Read                     (readMaybe)
-import           UnliftIO                      (newTVarIO)
+import           UnliftIO                      (newTVarIO, readTVarIO)
 import           UnliftIO.Concurrent           (forkIO, threadDelay)
 
 
@@ -87,6 +87,16 @@ data Model = Model
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
 
+emptyModel :: Day -> Model
+emptyModel day = Model
+  { balancesInEdit  = []
+  , balancesSaved   = Map.empty
+  , startDate       = day
+  , financePlans    = []
+  , numberToCompute = 7
+  , computeBatch    = PickerComputeDaily
+  }
+
 batchComputed :: Model -> ChartData
 batchComputed Model{..} =
   let computed = take numberToCompute $
@@ -96,7 +106,7 @@ batchComputed Model{..} =
           PickerComputeWeekly  -> everyWeek daysComputed
           PickerComputeMonthly -> everyMonth daysComputed
           PickerComputeYearly  -> everyYear daysComputed
-  in  ChartData computed balancesSaved
+  in  ChartData computed (accountAuxColor <$> balancesSaved)
 
 #ifndef ghcjs_HOST_OS
 getContext :: IO JSVal
@@ -238,16 +248,7 @@ view today debouncer Model{..} = div [className "container"]
 app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
-  initialState <-
-    let emptyState = Model
-          { balancesInEdit  = []
-          , balancesSaved   = Map.empty
-          , startDate       = today
-          , financePlans    = []
-          , numberToCompute = 7
-          , computeBatch    = PickerComputeDaily
-          }
-    in  fromMaybe emptyState <$> getStorage "budgetable"
+  initialState <- fromMaybe (emptyModel today) <$> getStorage "budgetable"
   model <- newTVarIO initialState
   debouncer <- debounceRaw 1
   shpadoinkle id runSnabbdom model (view today debouncer) stage
@@ -255,14 +256,18 @@ app = do
   threadDelay 1000
 
   context <- getContext
-  let initialChart = InitialChart (batchComputed initialState)
+  let initialChartData = batchComputed initialState
+  chartDataVar <- newTVarIO initialChartData
+  let initialChart = InitialChart initialChartData
   chart <- newChart context =<< toJSVal (toJSON initialChart)
   let go () newState = do
         setStorage "budgetable" newState
         threadDelay 1000
         let newChartData = batchComputed newState
-        assignChartData chart =<< toJSVal (toJSON newChartData)
-        updateChart chart
+        oldChartData <- readTVarIO chartDataVar
+        when (newChartData /= oldChartData) $ do
+          assignChartData chart =<< toJSVal (toJSON newChartData)
+          updateChart chart
   void $ forkIO $ shouldUpdate go () model
 
 
