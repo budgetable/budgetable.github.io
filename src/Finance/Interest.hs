@@ -11,18 +11,21 @@ import           Control.DeepSeq             (NFData)
 import           Data.Time.Calendar          (Day, fromGregorian, isLeapYear,
                                               toGregorian)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
+import Data.Binary (Binary)
 import           GHC.Generics                (Generic)
 import           Text.Printf                 (PrintfArg)
 
 
 newtype Interest = Interest {getInterest :: Double}
-  deriving (Eq, Ord, Show, Read, Num, NFData, Real, RealFrac, Fractional, Generic, RealFloat, Floating, PrintfArg)
+  deriving (Eq, Ord, Show, Read, Num, NFData, Real, RealFrac, Fractional,
+            Generic, RealFloat, Floating, PrintfArg, Binary)
 
 data CompoundingInterest = CompoundingInterest
   { compoundingInterestAnnualRate :: Interest -- ^ APR / APY of the interest rate
   , compoundingInterestInterval   :: RepeatingInterval -- ^ What interval does the interest apply on?
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData CompoundingInterest
+instance Binary CompoundingInterest
 instance Schedulable CompoundingInterest where
   isApplicableOn (CompoundingInterest _ interval) day = isApplicableOn interval day
 

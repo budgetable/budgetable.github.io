@@ -5,12 +5,14 @@ module Finance.DayOf where
 
 import           Control.DeepSeq (NFData)
 import           Data.Text       (Text)
+import Data.Binary (Binary)
 import           GHC.Generics    (Generic)
 
 
 data DayOfWeek = Sun | Mon | Tue | Wed | Thu | Fri | Sat
   deriving (Show, Read, Eq, Ord, Enum, Bounded, Generic)
 instance NFData DayOfWeek
+instance Binary DayOfWeek
 dayOfWeekNum :: DayOfWeek -> Int
 dayOfWeekNum x = case x of
   Sun -> 7

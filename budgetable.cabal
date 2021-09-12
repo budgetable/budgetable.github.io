@@ -29,6 +29,7 @@ library
     , Shpadoinkle-lens
     , aeson
     , attoparsec
+    , binary
     , containers
     , deepseq
     , generic-lens
@@ -71,6 +72,7 @@ executable budgetable-app
     , Shpadoinkle-lens
     , aeson
     , attoparsec
+    , binary
     , containers
     , deepseq
     , generic-lens
@@ -80,6 +82,7 @@ executable budgetable-app
     , text
     , time == 1.8.0.2
     , unliftio
+    -- , z85
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options:

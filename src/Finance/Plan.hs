@@ -16,6 +16,7 @@ import           Control.Lens         ((%~), (.~))
 import           Data.Generics.Labels ()
 import qualified Data.Map             as Map
 import           Data.Text            (Text)
+import Data.Binary (Binary)
 import           GHC.Generics         (Generic)
 
 
@@ -30,6 +31,7 @@ data Transfer = Transfer
   , transferToAccountAux   :: AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Transfer
+instance Binary Transfer
 
 -- | Genesis of value for accounts
 data Income = Income
@@ -37,6 +39,7 @@ data Income = Income
   , incomeAccountAux :: AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Income
+instance Binary Income
 
 -- | Burning of value for accounts
 data Cost = Cost
@@ -44,6 +47,7 @@ data Cost = Cost
   , costAccountAux :: AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Cost
+instance Binary Cost
 
 data FinancePlanType
   = FinancePlanTypeTransfer Transfer
@@ -51,6 +55,7 @@ data FinancePlanType
   | FinancePlanTypeCost     Cost
   deriving (Show, Read, Eq, Ord, Generic)
 instance NFData FinancePlanType
+instance Binary FinancePlanType
 
 data FinancePlan = FinancePlan
   { financePlanType     :: FinancePlanType -- ^ type of the financial plan
@@ -59,6 +64,7 @@ data FinancePlan = FinancePlan
   , financePlanNote     :: Text -- ^ optional note for reference
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData FinancePlan
+instance Binary FinancePlan
 instance Schedulable FinancePlan where
   isApplicableOn (FinancePlan _ s _ _) d = isApplicableOn s d
 instance ApplyTransaction FinancePlan where

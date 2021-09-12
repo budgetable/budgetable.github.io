@@ -11,6 +11,7 @@ import           Finance.Interest   (CompoundingInterest (..),
 
 import           Control.DeepSeq    (NFData)
 import           Data.Aeson         (FromJSON, ToJSON)
+import Data.Binary (Binary)
 import           Data.Foldable      (foldlM)
 import           Data.Map           (Map)
 import qualified Data.Map           as Map
@@ -35,6 +36,7 @@ data AccountAux = AccountAux
   , accountAuxInterest :: Maybe CompoundingInterest
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData AccountAux
+instance Binary AccountAux
 
 -- makeInterestFinancePlan :: Day -> AccountId -> AccountAux -> Maybe FinancePlan
 -- makeInterestFinancePlan today accountId accountAux@AccountAux{accountAuxBalance,accountAuxInterest} = case accountAuxInterest of
@@ -68,10 +70,11 @@ data AccountLimit
   | OnlyNegative
   deriving (Show, Read, Eq, Ord, Enum, Bounded, Generic)
 instance NFData AccountLimit
+instance Binary AccountLimit
 
 -- | An account with a unique identifier
 newtype AccountId = AccountId {getAccountId :: Text}
-  deriving (Show, Read, Eq, Ord, Generic, NFData, IsString, ToJSON, FromJSON)
+  deriving (Show, Read, Eq, Ord, Generic, NFData, IsString, ToJSON, FromJSON, Binary)
 
 blankAccount :: (AccountId, AccountAux)
 blankAccount =

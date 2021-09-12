@@ -53,6 +53,7 @@ import           Control.Monad                 (void, when)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
 import           Data.Generics.Labels          ()
+import Data.Binary (Binary)
 import qualified Data.Map                      as Map
 import           Data.Maybe                    (fromMaybe)
 import           Data.Text                     (Text)
@@ -76,6 +77,7 @@ data ComputeBatchPicker
   | PickerComputeYearly
   deriving (Eq, Ord, Show, Read, Generic, Enum, Bounded)
 instance NFData ComputeBatchPicker
+instance Binary ComputeBatchPicker
 
 data Model = Model
   { balancesInEdit  :: [(AccountId, AccountAux)]
@@ -86,6 +88,7 @@ data Model = Model
   , computeBatch    :: ComputeBatchPicker
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
+instance Binary Model
 
 emptyModel :: Day -> Model
 emptyModel day = Model

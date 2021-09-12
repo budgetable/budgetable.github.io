@@ -11,18 +11,17 @@ import           Control.DeepSeq      (NFData)
 import           Data.Attoparsec.Text (Parser, char, digit, many1)
 import           Data.Text            (Text)
 import qualified Data.Text            as T
+import Data.Binary (Binary)
 import           GHC.Generics         (Generic)
 
 
 -- | Money, in terms of cent (lossless compared to 'Double')
 newtype Cent = Cent {getCent :: Integer}
-  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum)
-instance NFData Cent
+  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum, NFData, Binary)
 
 -- | Cent, but with a prettier format
 newtype Dollar = Dollar {getDollar :: Cent}
-  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum)
-instance NFData Dollar
+  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum, NFData, Binary)
 dollarPrinter :: Dollar -> Text
 dollarPrinter (Dollar (Cent xs)) =
   if  | xsLen == 1 -> "0.0" <> xs'

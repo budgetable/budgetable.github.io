@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Finance.Schedule where
 
@@ -6,12 +8,16 @@ import           Finance.DayOf               (DayOfMonth, DayOfWeek, DayOfYear,
                                               dayOfWeekNum)
 
 import           Control.DeepSeq             (NFData)
-import           Data.Time.Calendar          (Day, gregorianMonthLength,
+import           Data.Time.Calendar          (Day (..), gregorianMonthLength,
                                               isLeapYear, toGregorian)
 import           Data.Time.Calendar.MonthDay (monthAndDayToDayOfYear)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
+import Data.Binary (Binary)
 import           GHC.Generics                (Generic)
 
+
+deriving instance Generic Day
+instance Binary Day
 
 class Schedulable a where
   isApplicableOn :: a -> Day -> Bool
@@ -24,6 +30,7 @@ data RepeatingInterval
   | RepeatingYearly DayOfYear -- ^ on some day of the year
   deriving (Show, Read, Eq, Ord, Generic)
 instance NFData RepeatingInterval
+instance Binary RepeatingInterval
 instance Schedulable RepeatingInterval where
   isApplicableOn r day = case r of
     RepeatingDaily -> True
@@ -44,6 +51,7 @@ data Schedule
   | DateSchedule Day -- ^ on some specific day (should be in the future)
   deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Schedule
+instance Binary Schedule
 instance Schedulable Schedule where
   isApplicableOn t day = case t of
     DateSchedule day'   -> day == day'
