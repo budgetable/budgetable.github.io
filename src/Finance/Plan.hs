@@ -13,10 +13,10 @@ import           Finance.Schedule     (Schedulable (..), Schedule)
 
 import           Control.DeepSeq      (NFData)
 import           Control.Lens         ((%~), (.~))
+import           Data.Binary          (Binary)
 import           Data.Generics.Labels ()
 import qualified Data.Map             as Map
 import           Data.Text            (Text)
-import Data.Binary (Binary)
 import           GHC.Generics         (Generic)
 
 

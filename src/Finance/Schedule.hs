@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -8,11 +8,11 @@ import           Finance.DayOf               (DayOfMonth, DayOfWeek, DayOfYear,
                                               dayOfWeekNum)
 
 import           Control.DeepSeq             (NFData)
+import           Data.Binary                 (Binary)
 import           Data.Time.Calendar          (Day (..), gregorianMonthLength,
                                               isLeapYear, toGregorian)
 import           Data.Time.Calendar.MonthDay (monthAndDayToDayOfYear)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
-import Data.Binary (Binary)
 import           GHC.Generics                (Generic)
 
 

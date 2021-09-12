@@ -8,10 +8,10 @@ import           Finance.Schedule            (RepeatingInterval (..),
                                               Schedulable (..))
 
 import           Control.DeepSeq             (NFData)
+import           Data.Binary                 (Binary)
 import           Data.Time.Calendar          (Day, fromGregorian, isLeapYear,
                                               toGregorian)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
-import Data.Binary (Binary)
 import           GHC.Generics                (Generic)
 import           Text.Printf                 (PrintfArg)
 

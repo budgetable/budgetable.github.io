@@ -15,7 +15,8 @@ import           Chart                         (ChartData (..),
 import           Debouncer                     (Debouncer)
 import           Finance                       (balancesOverTime, everyMonth,
                                                 everyWeek, everyYear)
-import           Finance.Account               (AccountAux (accountAuxColor), AccountId, Accounts,
+import           Finance.Account               (AccountAux (accountAuxColor),
+                                                AccountId, Accounts,
                                                 blankAccount, mkAccounts)
 import           Finance.Plan                  (FinancePlan (..),
                                                 FinancePlanType (FinancePlanTypeTransfer),
@@ -52,8 +53,8 @@ import           Control.Lens.Tuple            (_1, _2)
 import           Control.Monad                 (void, when)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
+import           Data.Binary                   (Binary)
 import           Data.Generics.Labels          ()
-import Data.Binary (Binary)
 import qualified Data.Map                      as Map
 import           Data.Maybe                    (fromMaybe)
 import           Data.Text                     (Text)

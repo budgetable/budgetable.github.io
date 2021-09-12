@@ -2,14 +2,13 @@
 
 module Chart where
 
-import           Finance.Account    (AccountId,
-                                     Balances)
+import           Finance.Account    (AccountId, Balances)
 import           Finance.Dollar     (Dollar, dollarPrinter)
 
 import           Data.Aeson         (ToJSON (..), Value (String), object, (.=))
 import           Data.Map           (Map)
 import qualified Data.Map           as Map
-import Data.Text (Text)
+import           Data.Text          (Text)
 import           Data.Time.Calendar (Day)
 
 

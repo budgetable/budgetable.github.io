@@ -4,8 +4,8 @@
 module Finance.DayOf where
 
 import           Control.DeepSeq (NFData)
+import           Data.Binary     (Binary)
 import           Data.Text       (Text)
-import Data.Binary (Binary)
 import           GHC.Generics    (Generic)
 
 

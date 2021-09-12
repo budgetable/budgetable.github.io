@@ -11,7 +11,7 @@ import           Finance.Interest   (CompoundingInterest (..),
 
 import           Control.DeepSeq    (NFData)
 import           Data.Aeson         (FromJSON, ToJSON)
-import Data.Binary (Binary)
+import           Data.Binary        (Binary)
 import           Data.Foldable      (foldlM)
 import           Data.Map           (Map)
 import qualified Data.Map           as Map

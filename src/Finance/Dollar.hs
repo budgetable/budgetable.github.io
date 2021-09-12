@@ -9,9 +9,9 @@ module Finance.Dollar where
 import           Control.Applicative  ((<|>))
 import           Control.DeepSeq      (NFData)
 import           Data.Attoparsec.Text (Parser, char, digit, many1)
+import           Data.Binary          (Binary)
 import           Data.Text            (Text)
 import qualified Data.Text            as T
-import Data.Binary (Binary)
 import           GHC.Generics         (Generic)
 
 
