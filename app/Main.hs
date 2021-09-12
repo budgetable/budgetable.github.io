@@ -121,7 +121,7 @@ view :: forall m
      -> Model
      -> Html m Model
 view today debouncer Model{..} = div [className "container"]
-  [ h1_ ["Budgetable"]
+  [ h1_ ["Budgetable.org"]
   , hr'_
   , h3_ ["Active Accounts"]
   , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
