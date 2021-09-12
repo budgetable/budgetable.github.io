@@ -72,7 +72,9 @@ executable budgetable-app
     , Shpadoinkle-lens
     , aeson
     , attoparsec
+    , base64-bytestring
     , binary
+    , bytestring
     , containers
     , deepseq
     , generic-lens
@@ -82,7 +84,6 @@ executable budgetable-app
     , text
     , time == 1.8.0.2
     , unliftio
-    -- , z85
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options:

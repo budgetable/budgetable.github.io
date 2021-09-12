@@ -40,7 +40,7 @@ import           Shpadoinkle.Html              (a, button, canvas', checked,
                                                 min, onCheck, onClick, onOption,
                                                 option, p, select, selected,
                                                 step, styleProp, target, type',
-                                                value, width)
+                                                value, width, h5, textProperty, button', tabIndex, p_)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
@@ -49,18 +49,23 @@ import           Control.DeepSeq               (NFData)
 import           Control.Lens                  (Lens', lens, (^.))
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
-import           Control.Lens.Tuple            (_1, _2)
-import           Control.Monad                 (void, when)
+import           Control.Lens.Tuple            (_1, _2, _3)
+import           Control.Monad                 (void, when, (<=<))
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
 import           Data.Binary                   (Binary)
+import qualified Data.Binary as B
 import           Data.Generics.Labels          ()
 import qualified Data.Map                      as Map
-import           Data.Maybe                    (fromMaybe)
+import           Data.Maybe                    (fromJust)
+import Data.Monoid (First (..))
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
+import qualified Data.Text.Encoding            as T
 import           Data.Time.Calendar            (Day)
 import           Data.Time.Clock               (getCurrentTime, utctDay)
+import qualified Data.ByteString.Base64        as BS64
+import qualified Data.ByteString.Lazy          as LBS
 import           GHC.Generics                  (Generic)
 import           Language.Javascript.JSaddle   (JSVal, fromJSValUnchecked,
                                                 makeObject, toJSVal,
@@ -121,11 +126,16 @@ updateChart :: JSVal -> IO ()
 updateChart = error "Must use in GHCjs"
 assignChartData :: JSVal -> JSVal -> IO ()
 assignChartData = error "Must use in GHCjs"
+getHash :: IO Text
+getHash = error "Must use in GHCjs"
 #else
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
 foreign import javascript unsafe "$1.update();" updateChart :: JSVal -> IO ()
 foreign import javascript unsafe "$1.data = $2;" assignChartData :: JSVal -> JSVal -> IO ()
+foreign import javascript unsafe "$r = window.location.hash;" getHash' :: IO JSVal
+getHash :: IO Text
+getHash = fromJSValUnchecked =<< getHash'
 #endif
 
 view :: forall m
@@ -135,7 +145,35 @@ view :: forall m
      -> Model
      -> Html m Model
 view today debouncer Model{..} = div [className "container"]
-  [ h1_ ["Budgetable.org"]
+  [ div [className "row"]
+    [ div [className "col"] . (: []) $ h1_ ["Budgetable.org"]
+    , div [className "col", styleProp [("text-align","right")]]
+      [ button
+        [ className "btn btn-secondary"
+        , textProperty "data-bs-toggle" ("modal" :: Text)
+        , textProperty "data-bs-target" ("#dialog-new" :: Text)
+        ] ["New"]
+      , div [className "modal fade", tabIndex (-1), id' "dialog-new"]
+        [ div [className "modal-dialog"]
+          [ div [className "modal-content"] $
+            let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
+            in  [ div [className "modal-header"]
+                  [ h5 [className "modal-title"] ["Are you sure?"]
+                  , button' [className "btn-close", dismiss]
+                  ]
+                , div [className "modal-body"] . (: []) . p_ . (: []) $
+                  "Making a new budget will delete everything so far. Are you sure you want to start a new one?"
+                , div [className "modal-footer"]
+                  [ button [className "btn btn-secondary", dismiss]
+                    ["Cancel"]
+                  , button [className "btn btn-danger", onClick . const $ emptyModel today, dismiss]
+                    ["Yes, create a new budget"]
+                  ]
+                ]
+          ]
+        ]
+      ]
+    ]
   , hr'_
   , h3_ ["Active Accounts"]
   , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
@@ -252,7 +290,30 @@ view today debouncer Model{..} = div [className "container"]
 app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
-  initialState <- fromMaybe (emptyModel today) <$> getStorage "budgetable"
+  initialState <- do
+    let hush (Left _) = Nothing
+        hush (Right x) = Just x
+        hashToModel :: Text -> Maybe Model
+        hashToModel = getModel <=< getByteString
+          where
+            getModel :: LBS.ByteString -> Maybe Model
+            getModel =
+                fmap (^. _3)
+              . hush
+              . B.decodeOrFail
+            getByteString :: Text -> Maybe LBS.ByteString
+            getByteString x
+              | T.null x = Nothing
+              | otherwise =
+                  fmap LBS.fromStrict
+                . hush -- either to maybe
+                . BS64.decode -- decode base64 into bytes
+                . T.encodeUtf8 -- turn into strict bytestring
+                $ T.tail x -- take away first #
+    mHash <- First . hashToModel <$> getHash
+    mStored <- First <$> getStorage "budgetable"
+    let justEmptyModel = First . Just $ emptyModel today
+    pure . fromJust . getFirst $ mHash <> mStored <> justEmptyModel
   model <- newTVarIO initialState
   debouncer <- debounceRaw 1
   shpadoinkle id runSnabbdom model (view today debouncer) stage
