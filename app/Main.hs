@@ -27,7 +27,7 @@ import           View.Day                      (dayEdit)
 import           View.FinancePlan              (financePlanEdit,
                                                 financePlanView)
 
-import           Prelude                       hiding (div, min)
+import           Prelude                       hiding (div, min, span)
 import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 RawNode (..), listenRaw,
                                                 shpadoinkle, text)
@@ -35,12 +35,12 @@ import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
 import           Shpadoinkle.Html              (a, accept, button, button',
                                                 canvas', checked, className,
-                                                debounceRaw, div, h1_, h2_, h3_,
-                                                h4_, h5, height, hr'_, href,
-                                                id', input', label, min,
+                                                debounceRaw, div, em_, h1_, h2_,
+                                                h3_, h4_, h5, height, hr'_,
+                                                href, id', input', label, min,
                                                 onCheck, onClick, onClickM,
                                                 onOption, option, p, p_, select,
-                                                selected, step, styleProp,
+                                                selected, span, step, styleProp,
                                                 tabIndex, target, textProperty,
                                                 type', value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
@@ -408,6 +408,17 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
     [ "Check us out on "
     , a [href "https://github.com/budgetable/budgetable.github.io", target "_blank"] ["GitHub"]
     , "!"
+    ]
+  , p [styleProp [("text-align","center")]]
+    [ "Want to help me with "
+    , em_ ["my"]
+    , " budget? "
+    , a [href "https://www.buymeacoffee.com/athanclark", target "_blank"]
+      [ "Buy me a "
+      , span [styleProp [("text-decoration","line-through")]] ["coffee"]
+      , " beer"
+      ]
+    , "."
     ]
   ]
   where
