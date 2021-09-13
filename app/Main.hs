@@ -33,11 +33,12 @@ import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 shpadoinkle, text)
 import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
-import           Shpadoinkle.Html              (a, button, button', canvas',
-                                                checked, className, debounceRaw,
-                                                div, h1_, h2_, h3_, h4_, h5,
-                                                height, hr'_, href, id', input',
-                                                label, min, onCheck, onClick,
+import           Shpadoinkle.Html              (a, accept, button, button',
+                                                canvas', checked, className,
+                                                debounceRaw, div, h1_, h2_, h3_,
+                                                h4_, h5, height, hr'_, href,
+                                                id', input', label, min,
+                                                onCheck, onClick, onClickM,
                                                 onOption, option, p, p_, select,
                                                 selected, step, styleProp,
                                                 tabIndex, target, textProperty,
@@ -51,7 +52,7 @@ import           Control.Lens                  (Lens', lens, (^.))
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
 import           Control.Lens.Tuple            (_1, _2, _3)
-import           Control.Monad                 (void, when)
+import           Control.Monad                 (void, when, (<=<))
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
 import           Data.Binary                   (Binary)
@@ -69,14 +70,18 @@ import qualified Data.Text.Encoding            as T
 import           Data.Time.Calendar            (Day)
 import           Data.Time.Clock               (getCurrentTime, utctDay)
 import           GHC.Generics                  (Generic)
+import           GHCJS.Foreign.Callback        (Callback, asyncCallback1)
 import qualified JavaScript.Array.Internal     as A
 import qualified JavaScript.TypedArray         as TA
-import           Language.Javascript.JSaddle   (JSVal, fromJSValUnchecked,
-                                                makeObject, toJSVal,
+import           Language.Javascript.JSaddle   (JSString, JSVal,
+                                                fromJSValUnchecked, makeObject,
+                                                textFromJSString, toJSVal,
                                                 unsafeGetProp)
 import           System.IO.Unsafe              (unsafePerformIO)
 import           Text.Read                     (readMaybe)
-import           UnliftIO                      (newTVarIO, readTVarIO)
+import           UnliftIO                      (atomically, newEmptyTMVarIO,
+                                                newTVarIO, putTMVar, readTVarIO,
+                                                takeTMVar)
 import           UnliftIO.Concurrent           (forkIO, threadDelay)
 
 
@@ -100,6 +105,17 @@ data Model = Model
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
 instance Binary Model
+
+modelToUint8Array :: Model -> IO TA.Uint8Array
+modelToUint8Array =
+  deflatePako <=< arrayToUint8Array <=< A.fromListIO <=< traverse toJSVal . BS.unpack . LBS.toStrict . B.encode
+
+uint8ArrayToModel :: TA.Uint8Array -> IO (Maybe Model)
+uint8ArrayToModel b = do
+  inflated <- fmap BS.pack $ traverse fromJSValUnchecked =<< A.toListIO =<< uint8ArrayToArray =<< inflatePako b
+  pure $ case B.decodeOrFail (LBS.fromStrict inflated) of
+    Left _        -> Nothing
+    Right (_,_,x) -> Just x
 
 bufferOverByteString :: (TA.Uint8Array -> IO TA.Uint8Array) -> BS.ByteString -> IO BS.ByteString
 bufferOverByteString f b = do
@@ -179,6 +195,12 @@ uint8ArrayToArray :: TA.Uint8Array -> IO A.JSArray
 uint8ArrayToArray = error "Must use in GHCjs"
 arrayToUint8Array :: A.JSArray -> IO TA.Uint8Array
 arrayToUint8Array = error "Must use in GHCjs"
+dataToUrl :: TA.Uint8Array -> IO Text
+dataToUrl = error "Must use in GHCjs"
+getFiles :: IO A.JSArray
+getFiles = error "Must use in GHCjs"
+fileToUint8Array :: JSVal -> IO TA.Uint8Array
+fileToUint8Array = error "Must use in GHCjs"
 #else
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
@@ -190,10 +212,18 @@ foreign import javascript unsafe "$r = pako['deflate']($1);" deflatePako :: TA.U
 foreign import javascript unsafe "$r = pako['inflate']($1);" inflatePako :: TA.Uint8Array -> IO TA.Uint8Array
 foreign import javascript unsafe "$r = Array.from($1);" uint8ArrayToArray :: TA.Uint8Array -> IO A.JSArray
 foreign import javascript unsafe "$r = new Uint8Array($1);" arrayToUint8Array :: A.JSArray -> IO TA.Uint8Array
+foreign import javascript unsafe "$r = URL['createObjectURL'](new File([$1],'budget.bgt',{'type':'application/budgetable'}));" dataToUrl' :: TA.Uint8Array -> IO JSString
+foreign import javascript unsafe "$r = document['getElementById']('import-file')['files'];" getFiles :: IO JSVal
+foreign import javascript unsafe "$r = $1.length;" filesLength :: JSVal -> IO Int
+foreign import javascript unsafe "$r = $1[0];" firstFile :: JSVal -> IO JSVal
+foreign import javascript safe "$1['arrayBuffer']().then($2);" fileToArrayBuffer :: JSVal -> Callback (JSVal -> IO ()) -> IO ()
+foreign import javascript unsafe "$r = new Uint8Array($1);" arrayBufferToUint8Array :: JSVal -> IO TA.Uint8Array
 getHash :: IO Text
 getHash = fromJSValUnchecked =<< getHash'
 getHrefWithoutHash :: IO Text
 getHrefWithoutHash = T.takeWhile (/= '#') <$> (fromJSValUnchecked =<< getHref')
+dataToUrl :: TA.Uint8Array -> IO Text
+dataToUrl = fmap textFromJSString . dataToUrl'
 #endif
 
 view :: forall m
@@ -212,12 +242,49 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
         , textProperty "data-bs-toggle" ("modal" :: Text)
         , textProperty "data-bs-target" ("#dialog-import" :: Text)
         ] ["Import"]
+      , div [className "modal fade", tabIndex (-1), id' "dialog-import", styleProp [("text-align","left")]]
+        [ div [className "modal-dialog"]
+          [ div [className "modal-content"] $
+            let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
+            in  [ div [className "modal-header"]
+                  [ h5 [className "modal-title"] ["Import"]
+                  , button' [className "btn-close", dismiss]
+                  ]
+                , div [className "modal-body"]
+                  [ p_ ["Select a budget file"]
+                  , input' [type' "file", accept ".bgt", id' "import-file"]
+                  ]
+                , div [className "modal-footer"]
+                  [ button [className "btn btn-secondary", dismiss]
+                    ["Close"]
+                  , button
+                    [ className "btn btn-primary"
+                    , dismiss
+                    , onClickM . liftIO $ do
+                        files <- getFiles
+                        filesLen <- filesLength files
+                        if filesLen == 0 then pure id
+                        else do
+                          file <- firstFile files
+                          stateModifierVar <- newEmptyTMVarIO
+                          cb <- asyncCallback1 $ \buff -> do
+                            buff' <- arrayBufferToUint8Array buff
+                            mModel <- uint8ArrayToModel buff'
+                            atomically . putTMVar stateModifierVar $ maybe id const mModel
+                          fileToArrayBuffer file cb
+                          atomically $ takeTMVar stateModifierVar
+                    ]
+                    ["Import"]
+                  ]
+                ]
+          ]
+        ]
       , button
         [ className "btn btn-secondary"
         , textProperty "data-bs-toggle" ("modal" :: Text)
         , textProperty "data-bs-target" ("#dialog-export" :: Text)
         ] ["Export"]
-      , div [className "modal fade", tabIndex (-1), id' "dialog-export"]
+      , div [className "modal fade", tabIndex (-1), id' "dialog-export", styleProp [("text-align","left")]]
         [ div [className "modal-dialog"]
           [ div [className "modal-content"] $
             let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
@@ -227,16 +294,23 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
                   , button' [className "btn-close", dismiss]
                   ]
                 , div [className "modal-body"]
-                  [ p_
+                  [ p [styleProp [("overflow-x","auto")]]
                     [ "Share link: "
                     , a [ href shareLink
                         , target "_blank"
+                        , styleProp [("white-space","nowrap")]
                         ] [text shareLink]
                     ]
                   ]
                 , div [className "modal-footer"]
                   [ button [className "btn btn-secondary", dismiss]
                     ["Close"]
+                  , a
+                    [ className "btn btn-primary"
+                    , href . unsafePerformIO $ dataToUrl =<< modelToUint8Array currentModel
+                    , textProperty "download" ("budget.bgt" :: Text)
+                    ]
+                    ["Export"]
                   ]
                 ]
           ]
@@ -246,7 +320,7 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
         , textProperty "data-bs-toggle" ("modal" :: Text)
         , textProperty "data-bs-target" ("#dialog-new" :: Text)
         ] ["New"]
-      , div [className "modal fade", tabIndex (-1), id' "dialog-new"]
+      , div [className "modal fade", tabIndex (-1), id' "dialog-new", styleProp [("text-align","left")]]
         [ div [className "modal-dialog"]
           [ div [className "modal-content"] $
             let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
