@@ -113,3 +113,4 @@ addAccount acc name aux@AccountAux{accountAuxLimit,accountAuxBalance}
 
 mkAccounts :: [(AccountId, AccountAux)] -> Maybe Accounts
 mkAccounts = foldlM (uncurry . addAccount) Map.empty
+-- FIXME make it create as much as it can instead

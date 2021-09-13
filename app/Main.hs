@@ -252,7 +252,7 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
                   ]
                 , div [className "modal-body"]
                   [ p_ ["Select a budget file"]
-                  , input' [type' "file", accept ".bgt", id' "import-file"]
+                  , input' [type' "file", accept ".bgt", id' "import-file", className "form-control"]
                   ]
                 , div [className "modal-footer"]
                   [ button [className "btn btn-secondary", dismiss]
@@ -431,13 +431,42 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
                 ]
             ]
             <>
-              [ div [className "row d-grid"] . (: []) $
-                  button
-                    [ onClick $ \xs -> take idx xs <> drop (idx + 1) xs
-                    , className "btn btn-secondary"
-                    ] ["Delete"]
-              | isEditable
-              ] -- , styleProp [("padding","0.5rem")]] . (: []) $
+            ( if not isEditable then []
+              else
+                [ div [className "row d-grid"] . (: []) $
+                    button
+                      [ className "btn btn-secondary"
+                      , textProperty "data-bs-toggle" ("modal" :: Text)
+                      , textProperty "data-bs-target" ("#dialog-finance-plan-delete-" <> T.pack (show idx))
+                      ] ["Delete"]
+                , div
+                  [ className "modal fade"
+                  , tabIndex (-1)
+                  , id' $ "dialog-finance-plan-delete-" <> T.pack (show idx)
+                  ]
+                  [ div [className "modal-dialog"]
+                    [ div [className "modal-content"] $
+                      let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
+                      in  [ div [className "modal-header"]
+                            [ h5 [className "modal-title"] ["Are you sure?"]
+                            , button' [className "btn-close", dismiss]
+                            ]
+                          , div [className "modal-body"] . (: []) . p_ . (: []) $
+                            "Are you sure you want to delete this finance plan?"
+                          , div [className "modal-footer"]
+                            [ button [className "btn btn-secondary", dismiss]
+                              ["Cancel"]
+                            , button
+                              [ className "btn btn-danger"
+                              , onClick $ \xs -> take idx xs <> drop (idx + 1) xs
+                              , dismiss]
+                              ["Yes, delete this finance plan"]
+                            ]
+                          ]
+                    ]
+                  ]
+                ]
+            )
           ]
         newButton :: Html m [(FinancePlan, Bool)]
         newButton =
