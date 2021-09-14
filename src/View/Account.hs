@@ -160,10 +160,13 @@ accountLimitEdit l =
 accountView :: AccountId -> AccountAux -> [Html m a]
 accountView (AccountId name) (AccountAux limit color _ _) =
   [ span
-    [ styleProp [("color",color)]
-    ] ["&bull;"]
-  , "&nbsp;"
-  , text $ name <> " (" <> l <> ")"
+    [ styleProp [("background-color",color)]
+    , className "badge account-label"
+    ]
+    [text $ name <> " (" <> l <> ")"]
+  --   ["&bull;"]
+  -- , "&nbsp;"
+  -- , text $ name <> " (" <> l <> ")"
   ]
   where
     l = case limit of

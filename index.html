@@ -2,6 +2,7 @@
 <html lang="en">
     <head>
         <title>Budgetable.org</title>
+        <meta name="description" content="A free, open-source tool for managing and forecasting budgets."/>
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y1Y9RR3GLE"></script>
         <script>
          window.dataLayer = window.dataLayer || [];
@@ -18,6 +19,24 @@
              background-color: #eee;
          }
         </style>
+        <script type="text/javascript">
+function setBadgeTextColor() {
+    [].slice.call(document.querySelectorAll('.account-label'))
+    .map(function(e){
+        var color = window.getComputedStyle(e).getPropertyValue('background-color');
+        if (color.match(/^rgb/)) {
+            color = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/);
+            var r = color[1];
+            var g = color[2];
+            var b = color[3];
+            var hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
+            var c = hsp>127.5 ? 'black' : 'white';
+            var s = e.getAttribute('style');
+            e.setAttribute('style', s === '' ? 'color:' + c : s + ';color:' + c);
+        }
+    });
+}
+        </script>
     </head>
     <body>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>

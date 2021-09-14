@@ -101,6 +101,8 @@ resetHash :: IO ()
 resetHash = error "Must use in GHCjs"
 initializePopovers :: IO ()
 initializePopovers = error "Must use in GHCjs"
+setBadgeTextColor :: IO ()
+setBadgeTextColor = error "Must use in GHCjs"
 #else
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
@@ -116,6 +118,7 @@ foreign import javascript safe "$1['arrayBuffer']().then($2);" fileToArrayBuffer
 foreign import javascript unsafe "$r = new Uint8Array($1);" arrayBufferToUint8Array :: JSVal -> IO TA.Uint8Array
 foreign import javascript unsafe "history['replaceState']('',document.title,window.location.pathname + window.location.search);" resetHash :: IO ()
 foreign import javascript unsafe "[].slice.call(document.querySelectorAll('[data-bs-toggle=\"popover\"]')).map(function(e){new bootstrap['Popover'](e,{html:true});});" initializePopovers :: IO ()
+foreign import javascript unsafe "setBadgeTextColor();" setBadgeTextColor :: IO ()
 getHash :: IO Text
 getHash = fromJSValUnchecked =<< getHash'
 getHrefWithoutHash :: IO Text
@@ -471,6 +474,7 @@ app = do
   let initialChart = InitialChart initialChartData
   chart <- newChart context =<< toJSVal (toJSON initialChart)
   initializePopovers
+  setBadgeTextColor
   let go () newState = do
         setStorage "budgetable" newState
         threadDelay 1000
@@ -480,6 +484,7 @@ app = do
           assignChartData chart =<< toJSVal (toJSON newChartData)
           updateChart chart
         initializePopovers
+        setBadgeTextColor
   void $ forkIO $ shouldUpdate go () model
 
 
