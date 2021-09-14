@@ -37,12 +37,13 @@ import           Shpadoinkle.Html              (a, accept, button, button',
                                                 canvas', checked, className,
                                                 debounceRaw, div, em_, h1_, h2_,
                                                 h3_, h4_, h5, height, hr'_,
-                                                href, id', input', label, min,
-                                                onCheck, onClick, onClickM,
-                                                onOption, option, p, p_, select,
-                                                selected, span, step, styleProp,
-                                                tabIndex, target, textProperty,
-                                                type', value, width)
+                                                href, id', input', label,
+                                                label_, min, onCheck, onClick,
+                                                onClickM, onOption, option, p,
+                                                p_, select, selected, span,
+                                                step, styleProp, tabIndex,
+                                                target, textProperty, type',
+                                                value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
@@ -355,38 +356,47 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
   , h2_ ["Computed"]
   , h4_ ["Start Date"]
   , onRecord #startDate $ dayEdit startDate
-  , h4_ ["Interval"]
   , div [className "row"]
-    [ div [className "col"] . (: []) $
-        select
-          [ className "form-select"
-          , value . T.pack $ show computeBatch
-          , onOption $ \t m -> let x = read $ T.unpack t in m { computeBatch = x }
-          ] $
-          let mkComputePicker :: ComputeBatchPicker -> Html m Model
-              mkComputePicker p' = option [selected (p' == computeBatch), value . T.pack $ show p']
-                [ case p' of
-                    PickerComputeDaily   -> "Daily"
-                    PickerComputeWeekly  -> "Weekly"
-                    PickerComputeMonthly -> "Monthly"
-                    PickerComputeYearly  -> "Yearly"
-                ]
-          in  mkComputePicker <$> [minBound .. maxBound]
-    , div [className "col"] . (: []) $
-        input'
-          [ type' "number"
-          , step "1"
-          , min "0"
-          , value . T.pack $ show numberToCompute
-          , className "form-control"
-          , listenRaw "change" $ \(RawNode n) _ -> do
-              o <- makeObject n
-              v <- unsafeGetProp "value" o
-              t <- fromJSValUnchecked v
-              case readMaybe t of
-                Nothing      -> pure done
-                Just newDays -> pure . pur $ \m -> m {numberToCompute = newDays}
-          ]
+    [ div [className "col"] . (: []) $ div [className "form-group"]
+      [ label_ ["Interval:"]
+      , select
+        [ className "form-select"
+        , value . T.pack $ show computeBatch
+        , onOption $ \t m -> let x = read $ T.unpack t in m { computeBatch = x }
+        ] $
+        let mkComputePicker :: ComputeBatchPicker -> Html m Model
+            mkComputePicker p' = option [selected (p' == computeBatch), value . T.pack $ show p']
+              [ case p' of
+                  PickerComputeDaily   -> "Daily"
+                  PickerComputeWeekly  -> "Weekly"
+                  PickerComputeMonthly -> "Monthly"
+                  PickerComputeYearly  -> "Yearly"
+              ]
+        in  mkComputePicker <$> [minBound .. maxBound]
+      ]
+    , div [className "col"] . (: []) $ div [className "form-group"]
+      [ label_
+        [ text $ "Number of " <> case computeBatch of
+            PickerComputeDaily   -> "Days:"
+            PickerComputeWeekly  -> "Weeks:"
+            PickerComputeMonthly -> "Months:"
+            PickerComputeYearly  -> "Years:"
+        ]
+      , input'
+        [ type' "number"
+        , step "1"
+        , min "0"
+        , value . T.pack $ show numberToCompute
+        , className "form-control"
+        , listenRaw "change" $ \(RawNode n) _ -> do
+            o <- makeObject n
+            v <- unsafeGetProp "value" o
+            t <- fromJSValUnchecked v
+            case readMaybe t of
+              Nothing      -> pure done
+              Just newDays -> pure . pur $ \m -> m {numberToCompute = newDays}
+        ]
+      ]
     ]
   , canvas' [id' "graphed-income", width 400, height 400]
   , hr'_

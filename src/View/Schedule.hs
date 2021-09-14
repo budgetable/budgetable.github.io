@@ -16,7 +16,7 @@ import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
                                               text)
 import           Shpadoinkle.Continuation    (done, pur)
 import           Shpadoinkle.Html            (checked, className, div, input',
-                                              label, max, min, onCheckM,
+                                              label, label_, max, min, onCheckM,
                                               onInput, onOption, option, select,
                                               selected, step, type', value)
 import           Shpadoinkle.Lens            (onSum)
@@ -54,7 +54,12 @@ isRepeatingPickedDifferent r p = case (r,p) of
 scheduleEdit :: forall m. MonadIO m => Schedule -> [Html m Schedule]
 scheduleEdit s =
   [ div [className "col-md-2"] . (: []) $ div [className "form-check"]
-    [ input' [type' "checkbox", checked (isRepeating s), onCheckM checkedRepeating, className "form-check-input"]
+    [ input'
+      [ type' "checkbox"
+      , checked $ isRepeating s
+      , onCheckM checkedRepeating
+      , className "form-check-input"
+      ]
     , label [className "form-check-label"] ["Is Repeating?"]
     ]
   ] <> schedule
@@ -101,7 +106,13 @@ repeatingIntervalEdit r =
               , onOption changePicker
               , className "form-select"
               ] (mkPicker <$> [minBound .. maxBound])
-  in  [div [className "col"] [selectRepeat]] <> viewRepeat
+  in  [ div [className "col"]
+        [ div [className "form-group"]
+          [ label_ ["Interval:"]
+          , selectRepeat
+          ]
+        ]
+      ] <> viewRepeat
   where
     viewRepeat = case r of
       RepeatingDaily -> []
@@ -110,47 +121,56 @@ repeatingIntervalEdit r =
             mkWeekday w' =
               let shownW = T.pack $ show w'
               in  option [value shownW, selected (w' == w)] [text shownW]
-        in  [ div [className "col"] . (: []) $ select
+        in  [ div [className "col"] . (: []) $ div [className "form-group"]
+              [ label_ ["Weekday:"]
+              , select
                 [ value . T.pack $ show w
                 , onOption $ const . RepeatingWeekly . read . T.unpack
                 , className "form-select"
                 ]
                 (mkWeekday <$> [minBound .. maxBound])
+              ]
             ]
       RepeatingMonthly m ->
-        [ div [className "col"] . (: []) $ input'
-          [ type' "number"
-          , min "1"
-          , max "31"
-          , step "1"
-          , value . T.pack $ show m
-          , listenRaw "blur" $ \(RawNode n) _ -> do
-              o <- makeObject n
-              v <- unsafeGetProp "value" o
-              t <- fromJSValUnchecked v
-              pure $ case readMaybe t of
-                Nothing   -> done
-                Just mNew -> pur . const $ RepeatingMonthly mNew
-          , onInput $ \t old -> fromMaybe old . readMaybe $ T.unpack t
-          , className "form-control"
+        [ div [className "col"] . (: []) $ div [className "form-group"]
+          [ label_ ["Day:"]
+          , input'
+            [ type' "number"
+            , min "1"
+            , max "31"
+            , step "1"
+            , value . T.pack $ show m
+            , listenRaw "blur" $ \(RawNode n) _ -> do
+                o <- makeObject n
+                v <- unsafeGetProp "value" o
+                t <- fromJSValUnchecked v
+                pure $ case readMaybe t of
+                  Nothing   -> done
+                  Just mNew -> pur . const $ RepeatingMonthly mNew
+            , onInput $ \t old -> fromMaybe old . readMaybe $ T.unpack t
+            , className "form-control"
+            ]
           ]
         ]
       RepeatingYearly m ->
-        [ div [className "col"] . (: []) $ input'
-          [ type' "number"
-          , min "1"
-          , max "366"
-          , step "1"
-          , value . T.pack $ show m
-          , listenRaw "blur" $ \(RawNode n) _ -> do
-              o <- makeObject n
-              v <- unsafeGetProp "value" o
-              t <- fromJSValUnchecked v
-              pure $ case readMaybe t of
-                Nothing -> done
-                Just y  -> pur . const $ RepeatingMonthly y
-          , onInput $ \t old -> fromMaybe old . readMaybe $ T.unpack t
-          , className "form-control"
+        [ div [className "col"] . (: []) $ div [className "form-group"]
+          [ label_ ["Day of Year:"]
+          , input'
+            [ type' "number"
+            , min "1"
+            , max "366"
+            , step "1"
+            , value . T.pack $ show m
+            , listenRaw "blur" $ \(RawNode n) _ -> do
+                o <- makeObject n
+                v <- unsafeGetProp "value" o
+                t <- fromJSValUnchecked v
+                pure $ case readMaybe t of
+                  Nothing -> done
+                  Just y  -> pur . const $ RepeatingMonthly y
+            , onInput $ \t old -> fromMaybe old . readMaybe $ T.unpack t
+            , className "form-control"
+            ]
           ]
         ]
 

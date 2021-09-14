@@ -35,13 +35,11 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
   ]
   where
     balanceEdit :: Int -> (AccountId, AccountAux) -> Html m [(AccountId, AccountAux)]
-    balanceEdit idx x@(a@(AccountId aId),_) = div [className "row account"] $
-      (onSum (ix idx) <$> accountEdit (all (\(a',_) -> a' /= a) (take idx xs <> drop (idx + 1) xs)) debouncer x)
-      <>
-      [ div
-        [ className "col-xs-12 d-grid"
-        , styleProp [("margin-top", "0"),("padding-bottom", "0.5rem")]
-        ]
+    balanceEdit idx x@(a@(AccountId aId),_) = div [className "row account"]
+      [ div [className "col-xs-12 col-lg-11"] . (: []) . div [className "row"] $
+        onSum (ix idx)
+        <$> accountEdit (all (\(a',_) -> a' /= a) (take idx xs <> drop (idx + 1) xs)) debouncer x
+      , div [className "col-xs-12 col-lg-1"] . (: []) $ div [className "row d-grid"]
         [ button
           [ className "btn btn-secondary"
           , textProperty "data-bs-toggle" ("modal" :: Text)
@@ -65,7 +63,11 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                   , div [className "modal-footer"]
                     [ button [className "btn btn-secondary", dismiss]
                       ["Cancel"]
-                    , button [className "btn btn-danger", dismiss, onClick $ \xsOld -> take idx xsOld <> drop (idx + 1) xsOld]
+                    , button
+                      [ className "btn btn-danger"
+                      , dismiss
+                      , onClick $ \xsOld -> take idx xsOld <> drop (idx + 1) xsOld
+                      ]
                       ["Yes, delete this account"]
                     ]
                   ]

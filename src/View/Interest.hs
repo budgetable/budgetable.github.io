@@ -17,8 +17,9 @@ import           Shpadoinkle                 (Continuation, Html, JSM, MonadJSM,
                                               RawEvent, RawNode (..), text)
 import           Shpadoinkle.Console         (ToJSVal, warn)
 import           Shpadoinkle.Continuation    (contIso, done, pur)
-import           Shpadoinkle.Html            (className, div, input', listenRaw,
-                                              span, step, type', value)
+import           Shpadoinkle.Html            (className, div, input', label_,
+                                              listenRaw, span, step, type',
+                                              value)
 import           Shpadoinkle.Lens            (onRecord)
 
 import           Data.Attoparsec.Text        (parseOnly, scientific)
@@ -31,16 +32,19 @@ import           Text.Printf                 (printf)
 
 
 interestEdit :: forall m. MonadJSM m => Debouncer m T.Text -> Interest -> Html m Interest
-interestEdit debouncer i = div [className "input-group mb-3"]
-  [ input'
-    [ type' "number"
-    , step "0.001"
-    , value . T.pack . show $ getInterest i
-    , className "form-control"
-    , listenRaw "blur" (debouncer' parse)
-    , listenRaw "change" (debouncer' parse)
+interestEdit debouncer i = div [className "form-group"]
+  [ label_ ["APR:"]
+  , div [className "input-group mb-3"]
+    [ input'
+      [ type' "number"
+      , step "0.001"
+      , value . T.pack . show $ getInterest i
+      , className "form-control"
+      , listenRaw "blur" (debouncer' parse)
+      , listenRaw "change" (debouncer' parse)
+      ]
+    , div [className "input-group-append"] [span [className "input-group-text"] ["%"]]
     ]
-  , div [className "input-group-append"] [span [className "input-group-text"] ["%"]]
   ]
   where
     debouncer' :: Debouncer m Interest

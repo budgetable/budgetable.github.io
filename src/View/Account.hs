@@ -21,9 +21,9 @@ import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
                                               text)
 import           Shpadoinkle.Continuation    (pur)
 import           Shpadoinkle.Html            (checked, className, div, input',
-                                              label, onCheck, onOption, option,
-                                              placeholder, select, selected,
-                                              type', value)
+                                              label, label_, onCheck, onOption,
+                                              option, placeholder, select,
+                                              selected, type', value)
 import           Shpadoinkle.Lens            (onRecord, onSum)
 
 import           Control.Lens                ((.~))
@@ -44,7 +44,9 @@ accountEdit :: forall m
             -> [Html m (AccountId, AccountAux)]
 accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
   [ div [className "col-xs-12 col-sm-6 col-lg-3"]
-    [ onRecord (_1 . #getAccountId) $ input'
+    [ onRecord (_1 . #getAccountId) $ div [className "form-group"]
+      [ label_ ["Name:"]
+      , input'
         [ value nameRaw
         , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
             o <- makeObject n
@@ -58,36 +60,49 @@ accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
                   | otherwise = ""
             in  "form-control" <> validity
         ]
-    , div [className "invalid-feedback"]
-      [ if | name == ""   -> "Account name can't be left blank"
-           | not isUnique -> "Account name should be unique"
-           | otherwise    -> ""
+      , div [className "invalid-feedback"]
+        [ if
+            | name == ""   -> "Account name can't be left blank"
+            | not isUnique -> "Account name should be unique"
+            | otherwise    -> ""
+        ]
       ]
     ]
-  , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
-    onRecord (_2 . #accountAuxLimit) $ accountLimitEdit accountAuxLimit
-  , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) $
-    onRecord (_2 . #accountAuxColor) $ input'
-      [ value accountAuxColor
-      , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
-          o <- makeObject n
-          v <- unsafeGetProp "value" o
-          t <- fromJSValUnchecked v
-          pure . pur $ const t
-      , placeholder "Color"
-      , className "form-control"
+  , div [className "col-xs-12 col-sm-6 col-lg-3"]
+    [ onRecord (_2 . #accountAuxLimit) $ div [className "form-group"]
+      [ label_ ["Limit:"]
+      , accountLimitEdit accountAuxLimit
       ]
-  , div [className "col-xs-12 col-sm-6 col-lg-3"] . (: []) .
-    onRecord (_2 . #accountAuxBalance) $
-      let mOutOfLimit = outOfLimitError name accountAuxLimit accountAuxBalance
-          params = DollarEdit
-            { dollarEditIsPositive = False
-            , dollarEditIsValid = isNothing mOutOfLimit
-            , dollarEditInvalidFeedback = case mOutOfLimit of
-                Nothing -> ""
-                Just outOfLimit -> div [className "invalid-feedback"] [text outOfLimit]
-            }
-      in  dollarEdit params accountAuxBalance
+    ]
+  , div [className "col-xs-12 col-sm-6 col-lg-3"]
+    [ onRecord (_2 . #accountAuxColor) $ div [className "form-group"]
+      [ label_ ["Color:"]
+      , input'
+        [ value accountAuxColor
+        , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+            o <- makeObject n
+            v <- unsafeGetProp "value" o
+            t <- fromJSValUnchecked v
+            pure . pur $ const t
+        , placeholder "Color"
+        , className "form-control"
+        ]
+      ]
+    ]
+  , div [className "col-xs-12 col-sm-6 col-lg-3"]
+    [ onRecord (_2 . #accountAuxBalance) $ div [className "form-group"]
+      [ label_ ["Value:"]
+      , let mOutOfLimit = outOfLimitError name accountAuxLimit accountAuxBalance
+            params = DollarEdit
+              { dollarEditIsPositive = False
+              , dollarEditIsValid = isNothing mOutOfLimit
+              , dollarEditInvalidFeedback = case mOutOfLimit of
+                  Nothing -> ""
+                  Just outOfLimit -> div [className "invalid-feedback"] [text outOfLimit]
+              }
+        in  dollarEdit params accountAuxBalance
+      ]
+    ]
   , div [className "col-xs-12"]
     [ div [className "row"] $
       let interestRateEdit = case accountAuxInterest of

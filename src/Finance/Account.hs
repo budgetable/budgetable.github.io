@@ -12,10 +12,9 @@ import           Finance.Interest   (CompoundingInterest (..),
 import           Control.DeepSeq    (NFData)
 import           Data.Aeson         (FromJSON, ToJSON)
 import           Data.Binary        (Binary)
-import           Data.Foldable      (foldlM)
 import           Data.Map           (Map)
 import qualified Data.Map           as Map
-import           Data.Maybe         (isJust)
+import           Data.Maybe         (isJust, mapMaybe)
 import           Data.String        (IsString)
 import           Data.Text          (Text)
 import qualified Data.Text          as T
@@ -112,5 +111,5 @@ addAccount acc name aux@AccountAux{accountAuxLimit,accountAuxBalance}
   | otherwise = Nothing
 
 mkAccounts :: [(AccountId, AccountAux)] -> Maybe Accounts
-mkAccounts = foldlM (uncurry . addAccount) Map.empty
--- FIXME make it create as much as it can instead
+mkAccounts = Just . Map.unions . mapMaybe (uncurry (addAccount Map.empty))
+-- NOTE it used to fail if one was bad. mkAccounts = foldlM (uncurry . addAccount) Map.empty

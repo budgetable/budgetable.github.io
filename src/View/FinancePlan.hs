@@ -74,25 +74,29 @@ financePlanEdit accounts debouncer FinancePlan{..} = div [className "row"]
   , div [className "row"] $
     map (onRecord #financePlanSchedule) (scheduleEdit financePlanSchedule)
   , div [className "row"]
-      [ div [className "col"] . (: []) $
-        let params = DollarEdit
-              { dollarEditIsPositive = True
-              , dollarEditIsValid = True
-              , dollarEditInvalidFeedback = ""
-              }
-        in  onRecord #financePlanValue (dollarEdit params financePlanValue)
-      , div [className "col"] . (: []) $
-        onRecord #financePlanNote $
-        input'
-          [ value financePlanNote
-          , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
-              o <- makeObject n
-              v <- unsafeGetProp "value" o
-              t <- fromJSValUnchecked v
-              pure . pur $ const t
-          , placeholder "Optional Note"
-          , className "form-control"
-          ]
+      [ div [className "col"] . (: []) $ div [className "form-group"]
+        [ label_ ["Value:"]
+        , let params = DollarEdit
+                { dollarEditIsPositive = True
+                , dollarEditIsValid = True
+                , dollarEditInvalidFeedback = ""
+                }
+          in  onRecord #financePlanValue (dollarEdit params financePlanValue)
+        ]
+      , div [className "col"] . (: []) $ div [className "form-group"]
+        [ label_ ["Note:"]
+        , onRecord #financePlanNote $
+            input'
+              [ value financePlanNote
+              , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
+                  o <- makeObject n
+                  v <- unsafeGetProp "value" o
+                  t <- fromJSValUnchecked v
+                  pure . pur $ const t
+              , placeholder "Optional Note"
+              , className "form-control"
+              ]
+        ]
       ]
   ]
   where
