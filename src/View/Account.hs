@@ -7,6 +7,7 @@
 
 module View.Account where
 
+import           Bootstrap.Popover           (popoverDismissable)
 import           Debouncer                   (Debouncer)
 import           Finance.Account             (AccountAux (..), AccountId (..),
                                               AccountLimit (..),
@@ -23,7 +24,8 @@ import           Shpadoinkle.Continuation    (pur)
 import           Shpadoinkle.Html            (checked, className, div, input',
                                               label, label_, onCheck, onOption,
                                               option, placeholder, select,
-                                              selected, type', value)
+                                              selected, span, styleProp, type',
+                                              value)
 import           Shpadoinkle.Lens            (onRecord, onSum)
 
 import           Control.Lens                ((.~))
@@ -43,7 +45,7 @@ accountEdit :: forall m
             -> (AccountId, AccountAux)
             -> [Html m (AccountId, AccountAux)]
 accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
-  [ div [className "col-xs-12 col-sm-6 col-lg-3"]
+  [ div [className "col-6 col-lg-3"]
     [ onRecord (_1 . #getAccountId) $ div [className "form-group"]
       [ label_ ["Name:"]
       , input'
@@ -68,15 +70,29 @@ accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
         ]
       ]
     ]
-  , div [className "col-xs-12 col-sm-6 col-lg-3"]
+  , div [className "col-6 col-lg-3"]
     [ onRecord (_2 . #accountAuxLimit) $ div [className "form-group"]
-      [ label_ ["Limit:"]
+      [ label_
+        [ "Limit: "
+        , popoverDismissable
+          "Account Limits"
+          "Some accounts naturally have limits; credit cards only hold negative balances, while most medium-term savings accounts only hold positive balances. Checking accounts, however, usually don't have a restriction."
+          [className "badge rounded-pill bg-light text-dark"]
+          ["?"]
+        ]
       , accountLimitEdit accountAuxLimit
       ]
     ]
-  , div [className "col-xs-12 col-sm-6 col-lg-3"]
+  , div [className "col-6 col-lg-3"]
     [ onRecord (_2 . #accountAuxColor) $ div [className "form-group"]
-      [ label_ ["Color:"]
+      [ label_
+        [ "Color: "
+        , popoverDismissable
+          "Graph Colors"
+          "You can use any HTML-compatible color you'd like. Any <a href=\"https://htmlcolorcodes.com/color-names/\" target=\"_blank\">HTML color names</a> will work, as well as <a href=\"https://htmlcolorcodes.com\" target=\"_blank\">normal HTML color codes</a>."
+          [className "badge rounded-pill bg-light text-dark"]
+          ["?"]
+        ]
       , input'
         [ value accountAuxColor
         , listenRaw "input" . debouncer $ \(RawNode n) _ -> do
@@ -89,7 +105,7 @@ accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
         ]
       ]
     ]
-  , div [className "col-xs-12 col-sm-6 col-lg-3"]
+  , div [className "col-6 col-lg-3"]
     [ onRecord (_2 . #accountAuxBalance) $ div [className "form-group"]
       [ label_ ["Value:"]
       , let mOutOfLimit = outOfLimitError name accountAuxLimit accountAuxBalance
@@ -103,7 +119,7 @@ accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
         in  dollarEdit params accountAuxBalance
       ]
     ]
-  , div [className "col-xs-12"]
+  , div [className "col-12"]
     [ div [className "row"] $
       let interestRateEdit = case accountAuxInterest of
             Nothing -> []
@@ -141,8 +157,14 @@ accountLimitEdit l =
       ]
 
 
-accountView :: AccountId -> AccountLimit -> Html m a
-accountView (AccountId name) limit = text $ name <> " (" <> l <> ")"
+accountView :: AccountId -> AccountAux -> [Html m a]
+accountView (AccountId name) (AccountAux limit color _ _) =
+  [ span
+    [ styleProp [("color",color)]
+    ] ["&bull;"]
+  , "&nbsp;"
+  , text $ name <> " (" <> l <> ")"
+  ]
   where
     l = case limit of
       NoRestriction -> "&plusmn;"

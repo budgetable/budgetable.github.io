@@ -6,6 +6,7 @@
 
 module View.Interest where
 
+import           Bootstrap.Popover           (popoverDismissable)
 import           Debouncer                   (Debouncer)
 import           Finance.Interest            (CompoundingInterest (..),
                                               Interest, getInterest)
@@ -33,7 +34,14 @@ import           Text.Printf                 (printf)
 
 interestEdit :: forall m. MonadJSM m => Debouncer m T.Text -> Interest -> Html m Interest
 interestEdit debouncer i = div [className "form-group"]
-  [ label_ ["APR:"]
+  [ label_
+    [ "APR: "
+    , popoverDismissable
+      "Annual Percentage Rate"
+      "This is the total interest percentage over one year. Do note that your compounding rate will drastically affect how much interest is accrued &mdash; for most credit cards, loans, and savings accounts, monthly APR is used. You can find more information from <a href=\"https://www.investopedia.com/terms/a/apr.asp\" target=\"_blank\">Investopedia</a>."
+      [className "badge rounded-pill bg-light text-dark"]
+      ["?"]
+    ]
   , div [className "input-group mb-3"]
     [ input'
       [ type' "number"

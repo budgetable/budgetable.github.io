@@ -4,6 +4,7 @@ version:             0.1.0.0
 
 library
   exposed-modules:
+      Bootstrap.Popover
       Chart
       Debouncer
       Finance

@@ -36,38 +36,36 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
   where
     balanceEdit :: Int -> (AccountId, AccountAux) -> Html m [(AccountId, AccountAux)]
     balanceEdit idx x@(a@(AccountId aId),_) = div [className "row account"]
-      [ div [className "col-xs-12 col-lg-11"] . (: []) . div [className "row"] $
+      [ div [className "col-12 col-lg-11"] . (: []) . div [className "row"] $
         onSum (ix idx)
         <$> accountEdit (all (\(a',_) -> a' /= a) (take idx xs <> drop (idx + 1) xs)) debouncer x
-      , div [className "col-xs-12 col-lg-1"] . (: []) $ div [className "row d-grid"]
+      , div [className "col-12 col-lg-1"] . (: []) $ div [className "row d-grid"]
         [ button
           [ className "btn btn-outline-danger"
           , textProperty "data-bs-toggle" ("modal" :: Text)
           , textProperty "data-bs-target" ("#dialog-account-delete-" <> T.pack (show idx))
           ]
           ["Delete"]
-        , div [className "row d-grid"] . (: []) $
-            button
-              [ className "btn btn-outline-secondary"
-              , styleProp [("margin-top","0.5em")]
-              , onClick $ \xs' ->
-                  if idx == 0 then xs'
-                  else take (idx - 1) xs' -- everything before the next one up
-                    <> [xs' !! idx] -- me
-                    <> take 1 (drop (idx - 1) xs') -- the one that was the next one up
-                    <> drop (idx + 1) xs' -- everything after me
-              ] ["&#8593;"]
-        , div [className "row d-grid"] . (: []) $
-            button
-              [ className "btn btn-outline-secondary"
-              , styleProp [("margin-top","0.5em")]
-              , onClick $ \xs' ->
-                  if idx == length xs' - 1 then xs'
-                  else take idx xs' -- everything before me
-                    <> take 1 (drop (idx + 1) xs') -- the next one after me
-                    <> [xs' !! idx] -- me
-                    <> drop (idx + 2) xs' -- everything after the next one down
-              ] ["&#8595;"]
+        , button
+            [ className "btn btn-outline-secondary"
+            , styleProp [("margin-top","0.5em")]
+            , onClick $ \xs' ->
+                if idx == 0 then xs'
+                else take (idx - 1) xs' -- everything before the next one up
+                  <> [xs' !! idx] -- me
+                  <> take 1 (drop (idx - 1) xs') -- the one that was the next one up
+                  <> drop (idx + 1) xs' -- everything after me
+            ] ["&#8593;"]
+        , button
+            [ className "btn btn-outline-secondary"
+            , styleProp [("margin-top","0.5em")]
+            , onClick $ \xs' ->
+                if idx == length xs' - 1 then xs'
+                else take idx xs' -- everything before me
+                  <> take 1 (drop (idx + 1) xs') -- the next one after me
+                  <> [xs' !! idx] -- me
+                  <> drop (idx + 2) xs' -- everything after the next one down
+            ] ["&#8595;"]
         , div
           [ className "modal fade"
           , tabIndex (-1)
@@ -81,7 +79,10 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                     , button' [className "btn-close", dismiss]
                     ]
                   , div [className "modal-body"] . (: []) . p_ . (: []) . text $
-                    "Are you sure you want to delete " <> T.pack (show aId) <> "?"
+                    let accName
+                          | aId == "" = "this account with no name"
+                          | otherwise = T.pack (show aId)
+                    in  "Are you sure you want to delete " <> accName <> "?"
                   , div [className "modal-footer"]
                     [ button [className "btn btn-secondary", dismiss]
                       ["Cancel"]
@@ -110,9 +111,8 @@ balancesView bs = table_ $ balanceView <$> Map.toList bs
   where
     balanceView :: (AccountId, AccountAux) -> Html m a
     balanceView (a,v) = tr_
-      [ td_
-        [ accountView a (accountAuxLimit v)
-        , ": "
-        ]
+      [ td_ $
+        accountView a v <>
+        [": "]
       , td_ [dollarView (accountAuxBalance v)]
       ]

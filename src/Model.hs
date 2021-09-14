@@ -59,7 +59,7 @@ data Model = Model
   { balancesInEdit  :: [(AccountId, AccountAux)]
   , balancesSaved   :: Accounts
   , startDate       :: Day
-  , financePlans    :: [(FinancePlan, Bool)]
+  , financePlans    :: [(FinancePlan, Bool)] -- ^ Bool being whether or not it's being edited FIXME
   , numberToCompute :: Int
   , computeBatch    :: ComputeBatchPicker
   } deriving (Eq, Ord, Show, Read, Generic)

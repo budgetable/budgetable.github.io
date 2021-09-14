@@ -201,40 +201,31 @@ financePlanEdit accounts debouncer FinancePlan{..} = div [className "row"]
 
 financePlanView :: FinancePlan -> Html m a
 financePlanView (FinancePlan t s v note) = div [className "row"]
-  [ div [className "col-sm-2"] [text note]
-  , case t of
-      FinancePlanTypeTransfer
-        ( Transfer
-          from
-          AccountAux{accountAuxLimit = fromLimit}
-          to
-          AccountAux{accountAuxLimit = toLimit}
-        ) ->
-        div [className "col-sm-6"] . (: []) $ div [className "row"]
-          [ centered $ accountView from fromLimit
-          , arrow
-          , centered $ dollarView v
-          , arrow
-          , centered $ accountView to toLimit
-          ]
-      FinancePlanTypeIncome (Income a AccountAux{accountAuxLimit}) ->
-        div [className "col-sm-6"] . (: []) $ div [className "row"]
-          [ div [className "col"] []
-          , div [className "col-sm-1"] []
-          , centered $ dollarView v
-          , arrow
-          , centered $ accountView a accountAuxLimit
-          ]
-      FinancePlanTypeCost (Cost a AccountAux{accountAuxLimit}) ->
-        div [className "col-sm-6"] . (: []) $ div [className "row"]
-          [ centered $ accountView a accountAuxLimit
-          , arrow
-          , centered $ dollarView v
-          , div [className "col-sm-1"] []
-          , div [className "col"] []
-          ]
-  , div [className "col-sm-4"] [scheduleView s]
+  [ div [className "col-12 col-sm-2"] [text note]
+  , div [className "col-12 col-sm-6"] . (: []) . div [className "row"] $ case t of
+      FinancePlanTypeTransfer (Transfer from fromAux to toAux) ->
+        [ centered $ accountView from fromAux
+        , arrow
+        , centered [dollarView v]
+        , arrow
+        , centered $ accountView to toAux
+        ]
+      FinancePlanTypeIncome (Income a aux) ->
+        [ div [className "col"] []
+        , div [className "col-1"] []
+        , centered [dollarView v]
+        , arrow
+        , centered $ accountView a aux
+        ]
+      FinancePlanTypeCost (Cost a aux) ->
+        [ centered $ accountView a aux
+        , arrow
+        , centered [dollarView v]
+        , div [className "col-1"] []
+        , div [className "col"] []
+        ]
+  , div [className "col-12 col-sm-4"] [scheduleView s]
   ]
   where
-    arrow = div [className "col-sm-1"] . (: []) $ "&#8594;"
-    centered = div [className "col", styleProp [("text-align", "center")]] . (: [])
+    arrow = div [className "col-1"] . (: []) $ "&#8594;"
+    centered = div [className "col", styleProp [("text-align", "center")]]

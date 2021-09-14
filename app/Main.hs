@@ -13,9 +13,9 @@ import           Chart                         (InitialChart (..))
 import           Debouncer                     (Debouncer)
 import           Finance.Account               (AccountAux, AccountId,
                                                 blankAccount, mkAccounts)
-import           Finance.Plan                  (FinancePlan (..),
-                                                FinancePlanType (FinancePlanTypeTransfer),
-                                                Transfer (..))
+import           Finance.Plan                  (Cost (..), FinancePlan (..),
+                                                FinancePlanType (..),
+                                                Income (..), Transfer (..))
 import           Finance.Schedule              (Schedule (DateSchedule))
 import           Model                         (ComputeBatchPicker (..),
                                                 Model (..), batchComputed,
@@ -28,7 +28,7 @@ import           View.Day                      (dayEdit)
 import           View.FinancePlan              (financePlanEdit,
                                                 financePlanView)
 
-import           Prelude                       hiding (div, min, span)
+import           Prelude                       hiding (div, log, min, span)
 import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 RawNode (..), listenRaw,
                                                 shpadoinkle, text)
@@ -49,7 +49,7 @@ import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
 
-import           Control.Lens                  (Lens', lens, (^.))
+import           Control.Lens                  (Lens', lens, (%~), (^.))
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
 import           Control.Lens.Tuple            (_1, _2)
@@ -57,6 +57,7 @@ import           Control.Monad                 (void, when)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
 import           Data.Generics.Labels          ()
+import qualified Data.Map                      as Map
 import           Data.Maybe                    (fromJust)
 import           Data.Monoid                   (First (..))
 import           Data.Text                     (Text)
@@ -98,6 +99,8 @@ fileToUint8Array :: JSVal -> IO TA.Uint8Array
 fileToUint8Array = error "Must use in GHCjs"
 resetHash :: IO ()
 resetHash = error "Must use in GHCjs"
+initializePopovers :: IO ()
+initializePopovers = error "Must use in GHCjs"
 #else
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
@@ -111,7 +114,8 @@ foreign import javascript unsafe "$r = $1.length;" filesLength :: JSVal -> IO In
 foreign import javascript unsafe "$r = $1[0];" firstFile :: JSVal -> IO JSVal
 foreign import javascript safe "$1['arrayBuffer']().then($2);" fileToArrayBuffer :: JSVal -> Callback (JSVal -> IO ()) -> IO ()
 foreign import javascript unsafe "$r = new Uint8Array($1);" arrayBufferToUint8Array :: JSVal -> IO TA.Uint8Array
-foreign import javascript unsafe "history.replaceState('',document.title,window.location.pathname + window.location.search);" resetHash :: IO ()
+foreign import javascript unsafe "history['replaceState']('',document.title,window.location.pathname + window.location.search);" resetHash :: IO ()
+foreign import javascript unsafe "[].slice.call(document.querySelectorAll('[data-bs-toggle=\"popover\"]')).map(function(e){new bootstrap['Popover'](e,{html:true});});" initializePopovers :: IO ()
 getHash :: IO Text
 getHash = fromJSValUnchecked =<< getHash'
 getHrefWithoutHash :: IO Text
@@ -129,8 +133,8 @@ view :: forall m
      -> Html m Model
 view today currentHref debouncer currentModel@Model{..} = div [className "container"]
   [ div [className "row"]
-    [ div [className "col"] . (: []) $ h1_ ["Budgetable.org"]
-    , div [className "col", styleProp [("text-align","right")]]
+    [ div [className "col-12 col-sm-6"] . (: []) $ h1_ ["Budgetable.org"]
+    , div [className "col-12 col-sm-6", styleProp [("text-align","right")]]
       [ button
         [ className "btn btn-secondary"
         , textProperty "data-bs-toggle" ("modal" :: Text)
@@ -240,9 +244,28 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
   , hr'_
   , h3_ ["Active Accounts"]
   , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
-        editBalancesLens = lens (^. #balancesInEdit) $ \m inEdit -> case mkAccounts inEdit of
-          Nothing -> m {balancesInEdit = inEdit}
-          Just bs -> m {balancesInEdit = inEdit, balancesSaved = bs}
+        editBalancesLens = lens (^. #balancesInEdit) $ \m@Model{financePlans = ps} inEdit ->
+          let updateAux :: AccountId -> AccountAux -> FinancePlan -> FinancePlan
+              updateAux aId aux f@(FinancePlan t _ _ _) =
+                f {financePlanType = case t of
+                    FinancePlanTypeIncome (Income aId' _)
+                      | aId' == aId -> FinancePlanTypeIncome $ Income aId aux
+                    FinancePlanTypeCost (Cost aId' _)
+                      | aId' == aId -> FinancePlanTypeCost $ Cost aId aux
+                    FinancePlanTypeTransfer t' -> FinancePlanTypeTransfer $ case t' of
+                      Transfer tId _ fId _ | aId == tId && aId == fId -> Transfer aId aux aId aux
+                      Transfer aId' _ x y | aId' == aId -> Transfer aId aux x y
+                      Transfer x y aId' _ | aId' == aId -> Transfer x y aId aux
+                      _ -> t'
+                    _ -> t
+                  }
+          in case mkAccounts inEdit of
+            Nothing -> m {balancesInEdit = inEdit}
+            Just bs ->
+              m { balancesInEdit = inEdit
+                , balancesSaved = bs
+                , financePlans = Map.foldrWithKey (\k aux -> map (_1 %~ updateAux k aux)) ps bs
+                }
     in  onRecord editBalancesLens $ balancesEdit debouncer balancesInEdit
   , hr'_
   , h3_ ["Finance Plans"]
@@ -335,12 +358,13 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
       where
         itemFinancePlansEdit :: Int -> (FinancePlan, Bool) -> Html m [(FinancePlan, Bool)]
         itemFinancePlansEdit idx (f,isEditable) = div [className "row finance-plan"]
-          [ div [className "col-xs-12 col-lg-11"] . (: []) $
+          [ div [className "col-12 col-lg-11"] . (: []) $
               if isEditable
               then onSum (ix idx . _1) (financePlanEdit balancesSaved debouncer f)
               else financePlanView f
-          , div [className "col-xs-12 col-lg-1"] $
-            [ div [className "row"] . (: []) $ div [className "form-check"]
+          , div [className "col-12 col-lg-1"] $
+            [ div [className "row"] . (: []) . div [className "col"] . (: []) $
+                div [className "form-check form-switch"]
                 [ onSum (ix idx . _2) $
                     input' [type' "checkbox", checked isEditable, onCheck const, className "form-check-input"]
                 , label [className "form-check-label"] ["Edit"]
@@ -446,6 +470,7 @@ app = do
   chartDataVar <- newTVarIO initialChartData
   let initialChart = InitialChart initialChartData
   chart <- newChart context =<< toJSVal (toJSON initialChart)
+  initializePopovers
   let go () newState = do
         setStorage "budgetable" newState
         threadDelay 1000
@@ -454,6 +479,7 @@ app = do
         when (newChartData /= oldChartData) $ do
           assignChartData chart =<< toJSVal (toJSON newChartData)
           updateChart chart
+        initializePopovers
   void $ forkIO $ shouldUpdate go () model
 
 
