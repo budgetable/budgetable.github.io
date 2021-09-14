@@ -243,6 +243,7 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
         , textProperty "data-bs-toggle" ("modal" :: Text)
         , textProperty "data-bs-target" ("#dialog-import" :: Text)
         ] ["Import"]
+      , "&nbsp;"
       , div [className "modal fade", tabIndex (-1), id' "dialog-import", styleProp [("text-align","left")]]
         [ div [className "modal-dialog"]
           [ div [className "modal-content"] $
@@ -285,6 +286,7 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
         , textProperty "data-bs-toggle" ("modal" :: Text)
         , textProperty "data-bs-target" ("#dialog-export" :: Text)
         ] ["Export"]
+      , "&nbsp;"
       , div [className "modal fade", tabIndex (-1), id' "dialog-export", styleProp [("text-align","left")]]
         [ div [className "modal-dialog"]
           [ div [className "modal-content"] $
@@ -456,10 +458,32 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
               else
                 [ div [className "row d-grid"] . (: []) $
                     button
-                      [ className "btn btn-secondary"
+                      [ className "btn btn-outline-danger"
                       , textProperty "data-bs-toggle" ("modal" :: Text)
                       , textProperty "data-bs-target" ("#dialog-finance-plan-delete-" <> T.pack (show idx))
                       ] ["Delete"]
+                , div [className "row d-grid"] . (: []) $
+                    button
+                      [ className "btn btn-outline-secondary"
+                      , styleProp [("margin-top","0.5em")]
+                      , onClick $ \xs ->
+                          if idx == 0 then xs
+                          else take (idx - 1) xs -- everything before the next one up
+                            <> [xs !! idx] -- me
+                            <> take 1 (drop (idx - 1) xs) -- the one that was the next one up
+                            <> drop (idx + 1) xs -- everything after me
+                      ] ["&#8593;"]
+                , div [className "row d-grid"] . (: []) $
+                    button
+                      [ className "btn btn-outline-secondary"
+                      , styleProp [("margin-top","0.5em")]
+                      , onClick $ \xs ->
+                          if idx == length xs - 1 then xs
+                          else take idx xs -- everything before me
+                            <> take 1 (drop (idx + 1) xs) -- the next one after me
+                            <> [xs !! idx] -- me
+                            <> drop (idx + 2) xs -- everything after the next one down
+                      ] ["&#8595;"]
                 , div
                   [ className "modal fade"
                   , tabIndex (-1)

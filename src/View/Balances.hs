@@ -41,11 +41,33 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
         <$> accountEdit (all (\(a',_) -> a' /= a) (take idx xs <> drop (idx + 1) xs)) debouncer x
       , div [className "col-xs-12 col-lg-1"] . (: []) $ div [className "row d-grid"]
         [ button
-          [ className "btn btn-secondary"
+          [ className "btn btn-outline-danger"
           , textProperty "data-bs-toggle" ("modal" :: Text)
           , textProperty "data-bs-target" ("#dialog-account-delete-" <> T.pack (show idx))
           ]
           ["Delete"]
+        , div [className "row d-grid"] . (: []) $
+            button
+              [ className "btn btn-outline-secondary"
+              , styleProp [("margin-top","0.5em")]
+              , onClick $ \xs' ->
+                  if idx == 0 then xs'
+                  else take (idx - 1) xs' -- everything before the next one up
+                    <> [xs' !! idx] -- me
+                    <> take 1 (drop (idx - 1) xs') -- the one that was the next one up
+                    <> drop (idx + 1) xs' -- everything after me
+              ] ["&#8593;"]
+        , div [className "row d-grid"] . (: []) $
+            button
+              [ className "btn btn-outline-secondary"
+              , styleProp [("margin-top","0.5em")]
+              , onClick $ \xs' ->
+                  if idx == length xs' - 1 then xs'
+                  else take idx xs' -- everything before me
+                    <> take 1 (drop (idx + 1) xs') -- the next one after me
+                    <> [xs' !! idx] -- me
+                    <> drop (idx + 2) xs' -- everything after the next one down
+              ] ["&#8595;"]
         , div
           [ className "modal fade"
           , tabIndex (-1)
