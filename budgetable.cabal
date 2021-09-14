@@ -13,6 +13,7 @@ library
       Finance.Interest
       Finance.Plan
       Finance.Schedule
+      Model
       View.Account
       View.Balances
       View.Day
@@ -29,10 +30,13 @@ library
     , Shpadoinkle-lens
     , aeson
     , attoparsec
+    , base64-bytestring
     , binary
+    , bytestring
     , containers
     , deepseq
     , generic-lens
+    , ghcjs-base
     , jsaddle
     , lens == 4.17.1
     , scientific

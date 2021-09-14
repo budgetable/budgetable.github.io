@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP                 #-}
-{-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
@@ -10,18 +9,20 @@
 module Main where
 
 
-import           Chart                         (ChartData (..),
-                                                InitialChart (..))
+import           Chart                         (InitialChart (..))
 import           Debouncer                     (Debouncer)
-import           Finance                       (balancesOverTime, everyMonth,
-                                                everyWeek, everyYear)
-import           Finance.Account               (AccountAux (accountAuxColor),
-                                                AccountId, Accounts,
+import           Finance.Account               (AccountAux, AccountId,
                                                 blankAccount, mkAccounts)
 import           Finance.Plan                  (FinancePlan (..),
                                                 FinancePlanType (FinancePlanTypeTransfer),
                                                 Transfer (..))
 import           Finance.Schedule              (Schedule (DateSchedule))
+import           Model                         (ComputeBatchPicker (..),
+                                                Model (..), batchComputed,
+                                                decodeFromHash, emptyModel,
+                                                encodeForHash,
+                                                modelToUint8Array,
+                                                uint8ArrayToModel)
 import           View.Balances                 (balancesEdit)
 import           View.Day                      (dayEdit)
 import           View.FinancePlan              (financePlanEdit,
@@ -48,31 +49,21 @@ import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
 import           Shpadoinkle.Lens              (onRecord, onSum)
 import           Shpadoinkle.Run               (live, runJSorWarp)
 
-import           Control.DeepSeq               (NFData)
 import           Control.Lens                  (Lens', lens, (^.))
 import           Control.Lens.At               (ix)
 import           Control.Lens.Combinators      (imap)
-import           Control.Lens.Tuple            (_1, _2, _3)
-import           Control.Monad                 (void, when, (<=<))
+import           Control.Lens.Tuple            (_1, _2)
+import           Control.Monad                 (void, when)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
-import           Data.Binary                   (Binary)
-import qualified Data.Binary                   as B
-import qualified Data.ByteString               as BS
-import qualified Data.ByteString.Base64        as BS64
-import qualified Data.ByteString.Lazy          as LBS
 import           Data.Generics.Labels          ()
-import qualified Data.Map                      as Map
 import           Data.Maybe                    (fromJust)
 import           Data.Monoid                   (First (..))
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
-import qualified Data.Text.Encoding            as T
 import           Data.Time.Calendar            (Day)
 import           Data.Time.Clock               (getCurrentTime, utctDay)
-import           GHC.Generics                  (Generic)
 import           GHCJS.Foreign.Callback        (Callback, asyncCallback1)
-import qualified JavaScript.Array.Internal     as A
 import qualified JavaScript.TypedArray         as TA
 import           Language.Javascript.JSaddle   (JSString, JSVal,
                                                 fromJSValUnchecked, makeObject,
@@ -85,95 +76,6 @@ import           UnliftIO                      (atomically, newEmptyTMVarIO,
                                                 takeTMVar)
 import           UnliftIO.Concurrent           (forkIO, threadDelay)
 
-
-
-data ComputeBatchPicker
-  = PickerComputeDaily
-  | PickerComputeWeekly
-  | PickerComputeMonthly
-  | PickerComputeYearly
-  deriving (Eq, Ord, Show, Read, Generic, Enum, Bounded)
-instance NFData ComputeBatchPicker
-instance Binary ComputeBatchPicker
-
-data Model = Model
-  { balancesInEdit  :: [(AccountId, AccountAux)]
-  , balancesSaved   :: Accounts
-  , startDate       :: Day
-  , financePlans    :: [(FinancePlan, Bool)]
-  , numberToCompute :: Int
-  , computeBatch    :: ComputeBatchPicker
-  } deriving (Eq, Ord, Show, Read, Generic)
-instance NFData Model
-instance Binary Model
-
-modelToUint8Array :: Model -> IO TA.Uint8Array
-modelToUint8Array =
-  deflatePako <=< arrayToUint8Array <=< A.fromListIO <=< traverse toJSVal . BS.unpack . LBS.toStrict . B.encode
-
-uint8ArrayToModel :: TA.Uint8Array -> IO (Maybe Model)
-uint8ArrayToModel b = do
-  inflated <- fmap BS.pack $ traverse fromJSValUnchecked =<< A.toListIO =<< uint8ArrayToArray =<< inflatePako b
-  pure $ case B.decodeOrFail (LBS.fromStrict inflated) of
-    Left _        -> Nothing
-    Right (_,_,x) -> Just x
-
-bufferOverByteString :: (TA.Uint8Array -> IO TA.Uint8Array) -> BS.ByteString -> IO BS.ByteString
-bufferOverByteString f b = do
-  buff <- do
-    arr <- A.fromListIO =<< traverse toJSVal (BS.unpack b)
-    arrayToUint8Array arr
-  newBuff <- f buff
-  fmap BS.pack $ traverse fromJSValUnchecked =<< A.toListIO =<< uint8ArrayToArray newBuff
-
-encodeForHash :: Model -> IO Text
-encodeForHash m = do
-  deflated <- bufferOverByteString deflatePako . LBS.toStrict $ B.encode m
-  pure . T.decodeUtf8 $ BS64.encode deflated
-
-decodeFromHash :: Text -> IO (Maybe Model)
-decodeFromHash t = do
-  let mCompressed = getByteString t
-  mDecompressed <- sequence $ bufferOverByteString inflatePako <$> mCompressed
-  pure $ getModel =<< mDecompressed
-  where
-    hush (Left _)  = Nothing
-    hush (Right x) = Just x
-    getModel :: BS.ByteString -> Maybe Model
-    getModel =
-        fmap (^. _3)
-      . hush
-      . B.decodeOrFail
-      . LBS.fromStrict
-    getByteString :: Text -> Maybe BS.ByteString
-    getByteString x
-      | T.null x = Nothing
-      | otherwise =
-          hush -- either to maybe
-        . BS64.decode -- decode base64 into bytes
-        . T.encodeUtf8 -- turn into strict bytestring
-        $ T.tail x -- take away first #
-
-emptyModel :: Day -> Model
-emptyModel day = Model
-  { balancesInEdit  = []
-  , balancesSaved   = Map.empty
-  , startDate       = day
-  , financePlans    = []
-  , numberToCompute = 7
-  , computeBatch    = PickerComputeDaily
-  }
-
-batchComputed :: Model -> ChartData
-batchComputed Model{..} =
-  let computed = take numberToCompute $
-        let daysComputed = balancesOverTime startDate balancesSaved (fst <$> financePlans)
-        in  case computeBatch of
-          PickerComputeDaily   -> daysComputed
-          PickerComputeWeekly  -> everyWeek daysComputed
-          PickerComputeMonthly -> everyMonth daysComputed
-          PickerComputeYearly  -> everyYear daysComputed
-  in  ChartData computed (accountAuxColor <$> balancesSaved)
 
 #ifndef ghcjs_HOST_OS
 getContext :: IO JSVal
@@ -188,20 +90,14 @@ getHash :: IO Text
 getHash = error "Must use in GHCjs"
 getHrefWithoutHash :: IO Text
 getHrefWithoutHash = error "Must use in GHCjs"
-deflatePako :: TA.Uint8Array -> IO TA.Uint8Array
-deflatePako = error "Must use in GHCjs"
-inflatePako :: TA.Uint8Array -> IO TA.Uint8Array
-inflatePako = error "Must use in GHCjs"
-uint8ArrayToArray :: TA.Uint8Array -> IO A.JSArray
-uint8ArrayToArray = error "Must use in GHCjs"
-arrayToUint8Array :: A.JSArray -> IO TA.Uint8Array
-arrayToUint8Array = error "Must use in GHCjs"
 dataToUrl :: TA.Uint8Array -> IO Text
 dataToUrl = error "Must use in GHCjs"
 getFiles :: IO A.JSArray
 getFiles = error "Must use in GHCjs"
 fileToUint8Array :: JSVal -> IO TA.Uint8Array
 fileToUint8Array = error "Must use in GHCjs"
+resetHash :: IO ()
+resetHash = error "Must use in GHCjs"
 #else
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
@@ -209,16 +105,13 @@ foreign import javascript unsafe "$1.update();" updateChart :: JSVal -> IO ()
 foreign import javascript unsafe "$1.data = $2;" assignChartData :: JSVal -> JSVal -> IO ()
 foreign import javascript unsafe "$r = window.location.hash;" getHash' :: IO JSVal
 foreign import javascript unsafe "$r = window.location.href;" getHref' :: IO JSVal
-foreign import javascript unsafe "$r = pako['deflate']($1);" deflatePako :: TA.Uint8Array -> IO TA.Uint8Array
-foreign import javascript unsafe "$r = pako['inflate']($1);" inflatePako :: TA.Uint8Array -> IO TA.Uint8Array
-foreign import javascript unsafe "$r = Array.from($1);" uint8ArrayToArray :: TA.Uint8Array -> IO A.JSArray
-foreign import javascript unsafe "$r = new Uint8Array($1);" arrayToUint8Array :: A.JSArray -> IO TA.Uint8Array
 foreign import javascript unsafe "$r = URL['createObjectURL'](new File([$1],'budget.bgt',{'type':'application/budgetable'}));" dataToUrl' :: TA.Uint8Array -> IO JSString
 foreign import javascript unsafe "$r = document['getElementById']('import-file')['files'];" getFiles :: IO JSVal
 foreign import javascript unsafe "$r = $1.length;" filesLength :: JSVal -> IO Int
 foreign import javascript unsafe "$r = $1[0];" firstFile :: JSVal -> IO JSVal
 foreign import javascript safe "$1['arrayBuffer']().then($2);" fileToArrayBuffer :: JSVal -> Callback (JSVal -> IO ()) -> IO ()
 foreign import javascript unsafe "$r = new Uint8Array($1);" arrayBufferToUint8Array :: JSVal -> IO TA.Uint8Array
+foreign import javascript unsafe "history.replaceState('',document.title,window.location.pathname + window.location.search);" resetHash :: IO ()
 getHash :: IO Text
 getHash = fromJSValUnchecked =<< getHash'
 getHrefWithoutHash :: IO Text
@@ -532,7 +425,12 @@ app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
   initialState <- do
-    mHash <- First <$> (decodeFromHash =<< getHash)
+    mHash <- fmap First $ do
+      mHash' <- decodeFromHash =<< getHash
+      case mHash' of
+        Nothing -> pure ()
+        Just _  -> resetHash
+      pure mHash'
     mStored <- First <$> getStorage "budgetable"
     let justEmptyModel = First . Just $ emptyModel today
     pure . fromJust . getFirst $ mHash <> mStored <> justEmptyModel
