@@ -36,13 +36,14 @@ import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
 import           Shpadoinkle.Html              (a, accept, button, button',
                                                 canvas', checked, className,
-                                                debounceRaw, div, em_, h1_, h2_,
-                                                h3_, h4_, h5, height, hr'_,
-                                                href, id', input', label,
-                                                label_, min, onCheck, onClick,
-                                                onClickM, onOption, option, p,
-                                                p_, select, selected, span,
-                                                step, styleProp, tabIndex,
+                                                debounceRaw, div, em_, footer_,
+                                                h1_, h2_, h3_, h4_, h5, header,
+                                                height, hr'_, href, id', input',
+                                                label, label_, main', min,
+                                                onCheck, onClick, onClickM,
+                                                onOption, option, p, p_,
+                                                section_, select, selected,
+                                                span, step, styleProp, tabIndex,
                                                 target, textProperty, type',
                                                 value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
@@ -134,8 +135,8 @@ view :: forall m
      -> Debouncer m Text
      -> Model
      -> Html m Model
-view today currentHref debouncer currentModel@Model{..} = div [className "container"]
-  [ div [className "row"]
+view today currentHref debouncer currentModel@Model{..} = main' [className "container"]
+  [ header [className "row"]
     [ div [className "col-12 col-sm-6"]
       [ h1_ ["Budgetable.org"]
       , p [styleProp [("font-size","1.25rem"),("font-style","italic")]]
@@ -249,111 +250,119 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
       ]
     ]
   , hr'_
-  , h3_ ["Accounts"]
-  , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
-        editBalancesLens = lens (^. #balancesInEdit) $ \m@Model{financePlans = ps} inEdit ->
-          let updateAux :: AccountId -> AccountAux -> FinancePlan -> FinancePlan
-              updateAux aId aux f@(FinancePlan t _ _ _) =
-                f {financePlanType = case t of
-                    FinancePlanTypeIncome (Income aId' _)
-                      | aId' == aId -> FinancePlanTypeIncome $ Income aId aux
-                    FinancePlanTypeCost (Cost aId' _)
-                      | aId' == aId -> FinancePlanTypeCost $ Cost aId aux
-                    FinancePlanTypeTransfer t' -> FinancePlanTypeTransfer $ case t' of
-                      Transfer tId _ fId _ | aId == tId && aId == fId -> Transfer aId aux aId aux
-                      Transfer aId' _ x y | aId' == aId -> Transfer aId aux x y
-                      Transfer x y aId' _ | aId' == aId -> Transfer x y aId aux
-                      _ -> t'
-                    _ -> t
+  , section_
+    [ h3_ ["Accounts"]
+    , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
+          editBalancesLens = lens (^. #balancesInEdit) $ \m@Model{financePlans = ps} inEdit ->
+            let updateAux :: AccountId -> AccountAux -> FinancePlan -> FinancePlan
+                updateAux aId aux f@(FinancePlan t _ _ _) =
+                  f {financePlanType = case t of
+                      FinancePlanTypeIncome (Income aId' _)
+                        | aId' == aId -> FinancePlanTypeIncome $ Income aId aux
+                      FinancePlanTypeCost (Cost aId' _)
+                        | aId' == aId -> FinancePlanTypeCost $ Cost aId aux
+                      FinancePlanTypeTransfer t' -> FinancePlanTypeTransfer $ case t' of
+                        Transfer tId _ fId _ | aId == tId && aId == fId -> Transfer aId aux aId aux
+                        Transfer aId' _ x y | aId' == aId -> Transfer aId aux x y
+                        Transfer x y aId' _ | aId' == aId -> Transfer x y aId aux
+                        _ -> t'
+                      _ -> t
+                    }
+            in case mkAccounts inEdit of
+              Nothing -> m {balancesInEdit = inEdit}
+              Just bs ->
+                m { balancesInEdit = inEdit
+                  , balancesSaved = bs
+                  , financePlans = Map.foldrWithKey (\k aux -> map (_1 %~ updateAux k aux)) ps bs
                   }
-          in case mkAccounts inEdit of
-            Nothing -> m {balancesInEdit = inEdit}
-            Just bs ->
-              m { balancesInEdit = inEdit
-                , balancesSaved = bs
-                , financePlans = Map.foldrWithKey (\k aux -> map (_1 %~ updateAux k aux)) ps bs
-                }
-    in  onRecord editBalancesLens $ balancesEdit debouncer balancesInEdit
+      in  onRecord editBalancesLens $ balancesEdit debouncer balancesInEdit
+    ]
   , hr'_
-  , h3_ ["Finance Plans"]
-  , onRecord #financePlans $ listOfFinancePlansEdit financePlans
+  , section_
+    [ h3_ ["Finance Plans"]
+    , onRecord #financePlans $ listOfFinancePlansEdit financePlans
+    ]
   , hr'_
-  , h2_ ["Forecast"]
-  , h4_ ["Start Date"]
-  , onRecord #startDate $ dayEdit startDate
-  , div [className "row"]
-    [ div [className "col"] . (: []) $ div [className "form-group"]
-      [ label_ ["Interval:"]
-      , select
-        [ className "form-select"
-        , value . T.pack $ show computeBatch
-        , onOption $ \t m -> let x = read $ T.unpack t in m { computeBatch = x }
-        ] $
-        let mkComputePicker :: ComputeBatchPicker -> Html m Model
-            mkComputePicker p' = option [selected (p' == computeBatch), value . T.pack $ show p']
-              [ case p' of
-                  PickerComputeDaily   -> "Daily"
-                  PickerComputeWeekly  -> "Weekly"
-                  PickerComputeMonthly -> "Monthly"
-                  PickerComputeYearly  -> "Yearly"
-              ]
-        in  mkComputePicker <$> [minBound .. maxBound]
-      ]
-    , div [className "col"] . (: []) $ div [className "form-group"]
-      [ label_
-        [ text $ "Number of " <> case computeBatch of
-            PickerComputeDaily   -> "Days:"
-            PickerComputeWeekly  -> "Weeks:"
-            PickerComputeMonthly -> "Months:"
-            PickerComputeYearly  -> "Years:"
+  , section_
+    [ h2_ ["Forecast"]
+    , h4_ ["Start Date"]
+    , onRecord #startDate $ dayEdit startDate
+    , div [className "row"]
+      [ div [className "col"] . (: []) $ div [className "form-group"]
+        [ label_ ["Interval:"]
+        , select
+          [ className "form-select"
+          , value . T.pack $ show computeBatch
+          , onOption $ \t m -> let x = read $ T.unpack t in m { computeBatch = x }
+          ] $
+          let mkComputePicker :: ComputeBatchPicker -> Html m Model
+              mkComputePicker p' = option [selected (p' == computeBatch), value . T.pack $ show p']
+                [ case p' of
+                    PickerComputeDaily   -> "Daily"
+                    PickerComputeWeekly  -> "Weekly"
+                    PickerComputeMonthly -> "Monthly"
+                    PickerComputeYearly  -> "Yearly"
+                ]
+          in  mkComputePicker <$> [minBound .. maxBound]
         ]
-      , input'
-        [ type' "number"
-        , step "1"
-        , min "0"
-        , value . T.pack $ show numberToCompute
-        , className "form-control"
-        , listenRaw "change" $ \(RawNode n) _ -> do
-            o <- makeObject n
-            v <- unsafeGetProp "value" o
-            t <- fromJSValUnchecked v
-            case readMaybe t of
-              Nothing      -> pure done
-              Just newDays -> pure . pur $ \m -> m {numberToCompute = newDays}
+      , div [className "col"] . (: []) $ div [className "form-group"]
+        [ label_
+          [ text $ "Number of " <> case computeBatch of
+              PickerComputeDaily   -> "Days:"
+              PickerComputeWeekly  -> "Weeks:"
+              PickerComputeMonthly -> "Months:"
+              PickerComputeYearly  -> "Years:"
+          ]
+        , input'
+          [ type' "number"
+          , step "1"
+          , min "0"
+          , value . T.pack $ show numberToCompute
+          , className "form-control"
+          , listenRaw "change" $ \(RawNode n) _ -> do
+              o <- makeObject n
+              v <- unsafeGetProp "value" o
+              t <- fromJSValUnchecked v
+              case readMaybe t of
+                Nothing      -> pure done
+                Just newDays -> pure . pur $ \m -> m {numberToCompute = newDays}
+          ]
         ]
       ]
+    , canvas' [id' "graphed-income", width 400, height 400]
     ]
-  , canvas' [id' "graphed-income", width 400, height 400]
   , hr'_
-  , p [styleProp [("text-align","center")]]
-    [ "Budgetable is built with the great-and-powerful "
-    , a [href "https://shpadoinkle.org", target "_blank"] ["Shpadoinkle"]
-    , ", "
-    , a [href "https://chartjs.org", target "_blank"] ["Chart.js"]
-    , ", and "
-    , a [href "https://getbootstrap.com", target "_blank"] ["Bootstrap"]
-    , "."
-    ]
-  , p [styleProp [("text-align","center")]]
-    [ "It is Free Software released with NO WARRANTY, under the "
-    , a [href "https://www.gnu.org/licenses/gpl-3.0.en.html", target "_blank"] ["GNU GPL v3"]
-    , "."
-    ]
-  , p [styleProp [("text-align","center")]]
-    [ "Check us out on "
-    , a [href "https://github.com/budgetable/budgetable.github.io", target "_blank"] ["GitHub"]
-    , "!"
-    ]
-  , p [styleProp [("text-align","center")]]
-    [ "Want to help me with "
-    , em_ ["my"]
-    , " budget? "
-    , a [href "https://www.buymeacoffee.com/athanclark", target "_blank"]
-      [ "Buy me a "
-      , span [styleProp [("text-decoration","line-through")]] ["coffee"]
-      , " beer"
+  , footer_
+    [ p [styleProp [("text-align","center")]]
+      [ "Budgetable is built with the great-and-powerful "
+      , a [href "https://shpadoinkle.org", target "_blank"] ["Shpadoinkle"]
+      , ", "
+      , a [href "https://chartjs.org", target "_blank"] ["Chart.js"]
+      , ", and "
+      , a [href "https://getbootstrap.com", target "_blank"] ["Bootstrap"]
+      , "."
       ]
-    , "."
+    , p [styleProp [("text-align","center")]]
+      [ "It is Free Software released with NO WARRANTY, under the "
+      , a [href "https://www.gnu.org/licenses/gpl-3.0.en.html", target "_blank"] ["GNU GPL v3"]
+      , "."
+      ]
+    , p [styleProp [("text-align","center")]]
+      [ "Check us out on "
+      , a [href "https://github.com/budgetable/budgetable.github.io", target "_blank"] ["GitHub"]
+      , "!"
+      ]
+    , p [styleProp [("text-align","center")]]
+      [ "Want to help me with "
+      , em_ ["my"]
+      , " budget? "
+      , a [href "https://www.buymeacoffee.com/athanclark", target "_blank"]
+        [ "Buy me a "
+        , span [styleProp [("text-decoration","line-through")]] ["coffee"]
+        , " beer"
+        ]
+      , "."
+      ]
     ]
   ]
   where

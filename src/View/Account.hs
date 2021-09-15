@@ -80,7 +80,7 @@ accountEdit isUnique debouncer name@(AccountId nameRaw) AccountAux{..} =
         [ "Limit: "
         , popoverDismissable
           "Account Limits"
-          "Some accounts naturally have limits; credit cards only hold negative balances, while most medium-term savings accounts only hold positive balances. Checking accounts, however, usually don't have a restriction."
+          "Some accounts naturally have limits; credit cards only hold <em>negative</em> balances, while most medium-term savings accounts only hold <em>positive</em> balances. Checking accounts, however, usually don't have a restriction."
           [className "badge rounded-pill bg-light text-dark"]
           ["?"]
         ]
@@ -151,7 +151,16 @@ accountEdit isUnique debouncer name@(AccountId nameRaw) AccountAux{..} =
                       , onCheck const
                       , className "form-check-input"
                       ]
-                  , label [className "form-check-label"] ["Is Disabled?"]
+                  , label
+                    [ className "form-check-label"
+                    ]
+                    [ "Is Disabled? "
+                    , popoverDismissable
+                      "Disabling Accounts"
+                      "If you would like to compare hypothetical accounts (for instance, comparing prospect auto loans for two different vehicles), disabling it is a good method to remove the account from your budget <em>without deleting it</em>."
+                      [className "badge rounded-pill bg-light text-dark"]
+                      ["?"]
+                    ]
                   ]
             ]
           ] <> interestRateEdit
@@ -183,9 +192,6 @@ accountView (AccountId name) AccountAux{accountAuxLimit, accountAuxColor, accoun
     , className "badge account-label"
     ]
     [text $ name <> " (" <> l <> ")"]
-  --   ["&bull;"]
-  -- , "&nbsp;"
-  -- , text $ name <> " (" <> l <> ")"
   ]
   where
     c  | accountAuxDisabled = "#777"
