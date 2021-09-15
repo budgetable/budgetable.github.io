@@ -136,7 +136,11 @@ view :: forall m
      -> Html m Model
 view today currentHref debouncer currentModel@Model{..} = div [className "container"]
   [ div [className "row"]
-    [ div [className "col-12 col-sm-6"] . (: []) $ h1_ ["Budgetable.org"]
+    [ div [className "col-12 col-sm-6"]
+      [ h1_ ["Budgetable.org"]
+      , p [styleProp [("font-size","1.25rem"),("font-style","italic")]]
+        ["Open-Source Budget Visualization Software"]
+      ]
     , div [className "col-12 col-sm-6", styleProp [("text-align","right")]]
       [ button
         [ className "btn btn-secondary"
@@ -437,7 +441,7 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
         newButton =
           button
             [onClick (<> [(blankFinancePlan, True)]), className "btn btn-secondary"]
-            [text $ "Add New Finance Plan" <> if null fs then " (click me)" else ""]
+            ["Add New Finance Plan"]
           where
             blankFinancePlan =
               FinancePlan

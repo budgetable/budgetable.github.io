@@ -126,7 +126,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
         [ className "btn btn-secondary"
         , onClick (<> [blankAccount])
         ]
-        [text $ "Add New Account" <> if null xs then " (click me)" else ""]
+        ["Add New Account"]
 
 balancesView :: Accounts -> Html m a -- FIXME make term name reference Accounts? Not balances?
 balancesView bs = div [className "row"] $ balanceView <$> Map.toList bs
