@@ -36,6 +36,13 @@ function setBadgeTextColor() {
         }
     });
 }
+function initializePopovers() {
+    [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    .map(function(e){
+        var o = {'html':true};
+        new bootstrap['Popover'](e,o);
+    });
+}
         </script>
     </head>
     <body>

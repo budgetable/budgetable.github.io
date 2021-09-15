@@ -117,7 +117,7 @@ foreign import javascript unsafe "$r = $1[0];" firstFile :: JSVal -> IO JSVal
 foreign import javascript safe "$1['arrayBuffer']().then($2);" fileToArrayBuffer :: JSVal -> Callback (JSVal -> IO ()) -> IO ()
 foreign import javascript unsafe "$r = new Uint8Array($1);" arrayBufferToUint8Array :: JSVal -> IO TA.Uint8Array
 foreign import javascript unsafe "history['replaceState']('',document.title,window.location.pathname + window.location.search);" resetHash :: IO ()
-foreign import javascript unsafe "[].slice.call(document.querySelectorAll('[data-bs-toggle=\"popover\"]')).map(function(e){new bootstrap['Popover'](e,{html:true});});" initializePopovers :: IO ()
+foreign import javascript unsafe "initializePopovers();" initializePopovers :: IO ()
 foreign import javascript unsafe "setBadgeTextColor();" setBadgeTextColor :: IO ()
 getHash :: IO Text
 getHash = fromJSValUnchecked =<< getHash'
