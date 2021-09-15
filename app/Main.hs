@@ -9,7 +9,7 @@
 module Main where
 
 
-import           Chart                         (InitialChart (..))
+import           Chart                         (ChartData, InitialChart (..))
 import           Debouncer                     (Debouncer)
 import           Finance.Account               (AccountAux, AccountId,
                                                 blankAccount, mkAccounts)
@@ -107,7 +107,7 @@ setBadgeTextColor = error "Must use in GHCjs"
 foreign import javascript unsafe "$r = document.getElementById('graphed-income').getContext('2d');" getContext :: IO JSVal
 foreign import javascript unsafe "$r = new Chart($1, $2);" newChart :: JSVal -> JSVal -> IO JSVal
 foreign import javascript unsafe "$1.update();" updateChart :: JSVal -> IO ()
-foreign import javascript unsafe "$1.data = $2;" assignChartData :: JSVal -> JSVal -> IO ()
+foreign import javascript unsafe "assignChartData($1,$2);" assignChartData :: JSVal -> JSVal -> IO ()
 foreign import javascript unsafe "$r = window.location.hash;" getHash' :: IO JSVal
 foreign import javascript unsafe "$r = window.location.href;" getHref' :: IO JSVal
 foreign import javascript unsafe "$r = URL['createObjectURL'](new File([$1],'budget.bgt',{'type':'application/budgetable'}));" dataToUrl' :: TA.Uint8Array -> IO JSString
@@ -249,7 +249,7 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
       ]
     ]
   , hr'_
-  , h3_ ["Active Accounts"]
+  , h3_ ["Accounts"]
   , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
         editBalancesLens = lens (^. #balancesInEdit) $ \m@Model{financePlans = ps} inEdit ->
           let updateAux :: AccountId -> AccountAux -> FinancePlan -> FinancePlan
@@ -278,7 +278,7 @@ view today currentHref debouncer currentModel@Model{..} = div [className "contai
   , h3_ ["Finance Plans"]
   , onRecord #financePlans $ listOfFinancePlansEdit financePlans
   , hr'_
-  , h2_ ["Computed"]
+  , h2_ ["Forecast"]
   , h4_ ["Start Date"]
   , onRecord #startDate $ dayEdit startDate
   , div [className "row"]
@@ -473,9 +473,11 @@ app = do
   threadDelay 500
 
   context <- getContext
-  let initialChartData = batchComputed initialState
+  let initialChartData :: ChartData
+      initialChartData = batchComputed initialState
   chartDataVar <- newTVarIO initialChartData
-  let initialChart = InitialChart initialChartData
+  let initialChart :: InitialChart
+      initialChart = InitialChart initialChartData
   chart <- newChart context =<< toJSVal (toJSON initialChart)
   initializePopovers
   setBadgeTextColor

@@ -28,6 +28,10 @@ type Balances = Map AccountId Dollar
 getBalances :: Accounts -> Balances
 getBalances = fmap accountAuxBalance
 
+class NumericallyEqual a where
+  isNumericallyEqual :: a -> a -> Bool
+
+
 data AccountAux = AccountAux
   { accountAuxLimit    :: AccountLimit
   , accountAuxColor    :: Text
@@ -38,6 +42,10 @@ data AccountAux = AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData AccountAux
 instance Binary AccountAux
+instance NumericallyEqual AccountAux where
+  isNumericallyEqual (AccountAux l1 _ b1 i1 _ d1) (AccountAux l2 _ b2 i2 _ d2) =
+    l1 == l2 && b1 == b2 && i1 == i2 && d1 == d2
+
 
 applyInterest :: Day -> AccountAux -> AccountAux
 applyInterest day a@AccountAux{accountAuxBalance,accountAuxInterest,accountAuxLimit} = case accountAuxInterest of
@@ -66,6 +74,8 @@ instance Binary AccountLimit
 -- | An account with a unique identifier
 newtype AccountId = AccountId {getAccountId :: Text}
   deriving (Show, Read, Eq, Ord, Generic, NFData, IsString, ToJSON, FromJSON, Binary)
+instance NumericallyEqual AccountId where
+  isNumericallyEqual (AccountId x) (AccountId y) = x == y
 
 blankAccount :: (AccountId, AccountAux)
 blankAccount =
