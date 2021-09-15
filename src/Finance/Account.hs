@@ -33,19 +33,11 @@ data AccountAux = AccountAux
   , accountAuxColor    :: Text
   , accountAuxBalance  :: Dollar
   , accountAuxInterest :: Maybe CompoundingInterest
+  , accountAuxEditable :: Bool
+  , accountAuxDisabled :: Bool
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData AccountAux
 instance Binary AccountAux
-
--- makeInterestFinancePlan :: Day -> AccountId -> AccountAux -> Maybe FinancePlan
--- makeInterestFinancePlan today accountId accountAux@AccountAux{accountAuxBalance,accountAuxInterest} = case accountAuxInterest of
---   Nothing -> Nothing
---   Just i@CompoundingInterest{compoundingInterestInterval} -> Just $ FinancePlan
---     { financePlanType = FinancePlanIncome $ Income accountId accountAux
---     , financePlanSchedule = RepeatingSchedule compoundingInterestInterval
---     , financePlanValue = makeInterestIfApplicable i accountAuxBalance today
---     , financePlanNote = "Account " <> T.pack (show accountId) <> " applied interest"
---     }
 
 applyInterest :: Day -> AccountAux -> AccountAux
 applyInterest day a@AccountAux{accountAuxBalance,accountAuxInterest,accountAuxLimit} = case accountAuxInterest of
@@ -83,6 +75,8 @@ blankAccount =
     , accountAuxColor = ""
     , accountAuxBalance = 0
     , accountAuxInterest = Nothing
+    , accountAuxEditable = True
+    , accountAuxDisabled = False
     }
   )
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf          #-}
+{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
@@ -14,8 +15,10 @@ import           Finance.Account             (AccountAux (..), AccountId (..),
                                               outOfLimitError)
 import           Finance.Interest            (CompoundingInterest (..))
 import           Finance.Schedule            (RepeatingInterval (RepeatingMonthly))
-import           View.Dollar                 (DollarEdit (..), dollarEdit)
-import           View.Interest               (compoundingInterestEdit)
+import           View.Dollar                 (DollarEdit (..), dollarEdit,
+                                              dollarView)
+import           View.Interest               (compoundingInterestEdit,
+                                              compoundingInterestView)
 
 import           Prelude                     hiding (div, span)
 import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
@@ -42,9 +45,10 @@ accountEdit :: forall m
              . MonadIO m
             => Bool
             -> Debouncer m T.Text
-            -> (AccountId, AccountAux)
+            -> AccountId
+            -> AccountAux
             -> [Html m (AccountId, AccountAux)]
-accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
+accountEdit isUnique debouncer name@(AccountId nameRaw) AccountAux{..} =
   [ div [className "col-6 col-lg-3"]
     [ onRecord (_1 . #getAccountId) $ div [className "form-group"]
       [ label_ ["Name:"]
@@ -124,17 +128,31 @@ accountEdit isUnique debouncer (name@(AccountId nameRaw), AccountAux{..}) =
       let interestRateEdit = case accountAuxInterest of
             Nothing -> []
             Just i -> map (onSum (_2 . #accountAuxInterest . #_Just)) (compoundingInterestEdit debouncer i)
-      in  [ div [className "col"] . (: []) $ div [className "form-check"]
-            [ input'
-              [ type' "checkbox"
-              , checked (isJust accountAuxInterest)
-              , onCheck $ \c ->
-                let go | c = Just . CompoundingInterest 5 $ RepeatingMonthly 1
-                      | otherwise = Nothing
-                in  _2 . #accountAuxInterest .~ go
-              , className "form-check-input"
-              ]
-            , label [className "form-check-label"] ["Has Interest Rate?"]
+      in  [ div [className "col-6 col-md-4"]
+            [ div [className "row"] . (: []) . div [className "col"] . (: []) $
+                div [className "form-check form-switch"]
+                  [ input'
+                    [ type' "checkbox"
+                    , checked (isJust accountAuxInterest)
+                    , onCheck $ \c ->
+                      let go | c = Just . CompoundingInterest 5 $ RepeatingMonthly 1
+                            | otherwise = Nothing
+                      in  _2 . #accountAuxInterest .~ go
+                    , className "form-check-input"
+                    ]
+                  , label [className "form-check-label"] ["Has Interest Rate?"]
+                  ]
+            , div [className "row"] . (: []) . div [className "col"] . (: []) $
+                div [className "form-check form-switch"]
+                  [ onSum (_2 . #accountAuxDisabled) $
+                      input'
+                      [ type' "checkbox"
+                      , checked accountAuxDisabled
+                      , onCheck const
+                      , className "form-check-input"
+                      ]
+                  , label [className "form-check-label"] ["Is Disabled?"]
+                  ]
             ]
           ] <> interestRateEdit
     ]
@@ -158,9 +176,10 @@ accountLimitEdit l =
 
 
 accountView :: AccountId -> AccountAux -> [Html m a]
-accountView (AccountId name) (AccountAux limit color _ _) =
+accountView (AccountId name) AccountAux{accountAuxLimit, accountAuxColor, accountAuxDisabled} =
   [ span
-    [ styleProp [("background-color",color)]
+    [ styleProp $ [("background-color",c)]
+      <> [("text-decoration","line-through") | accountAuxDisabled]
     , className "badge account-label"
     ]
     [text $ name <> " (" <> l <> ")"]
@@ -169,7 +188,32 @@ accountView (AccountId name) (AccountAux limit color _ _) =
   -- , text $ name <> " (" <> l <> ")"
   ]
   where
-    l = case limit of
+    c  | accountAuxDisabled = "#777"
+       | accountAuxColor == "" = "#666666"
+       | otherwise = accountAuxColor
+    l = case accountAuxLimit of
+      NoRestriction -> "&plusmn;"
+      OnlyPositive  -> "&plus;"
+      OnlyNegative  -> "&minus;"
+
+
+accountViewFull :: AccountId -> AccountAux -> [Html m a]
+accountViewFull (AccountId name) AccountAux{..} =
+  [ span
+    [ styleProp $ [("background-color",c)]
+      <> [("text-decoration","line-through") | accountAuxDisabled]
+    , className "badge account-label"
+    ]
+    [ text $ name <> " (" <> l <> ") "
+    , dollarView accountAuxBalance
+    ]
+  , " "
+  ] <> maybe [] compoundingInterestView accountAuxInterest
+  where
+    c  | accountAuxDisabled = "#777"
+       | accountAuxColor == "" = "#666666"
+       | otherwise = accountAuxColor
+    l = case accountAuxLimit of
       NoRestriction -> "&plusmn;"
       OnlyPositive  -> "&plus;"
       OnlyNegative  -> "&minus;"

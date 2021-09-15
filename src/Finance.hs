@@ -1,14 +1,16 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Finance where
 
-import           Finance.Account             (AccountAux (accountAuxBalance),
+import           Finance.Account             (AccountAux (AccountAux, accountAuxBalance, accountAuxDisabled),
                                               Accounts, Balances, applyInterest)
 import           Finance.Plan                (FinancePlan, applyTransaction)
 import           Finance.Schedule            (isApplicableOn)
 
 import           Data.Foldable               (foldl')
+import qualified Data.Map                    as Map
 import           Data.Time.Calendar          (Day, addDays, toGregorian)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
 
@@ -20,7 +22,10 @@ balancesOverTime :: Day -- ^ Today
                  -> [FinancePlan] -- ^ Things that happen
                  -> [(Day, Balances)]
 balancesOverTime today accounts financePlans =
-  (today, accountAuxBalance <$> newAccounts) : balancesOverTime (addDays 1 today) newAccounts financePlans
+  ( today
+  , accountAuxBalance
+    <$> Map.filter (\AccountAux{accountAuxDisabled} -> not accountAuxDisabled) newAccounts
+  ) : balancesOverTime (addDays 1 today) newAccounts financePlans
   where
     newAccounts :: Accounts
     newAccounts =

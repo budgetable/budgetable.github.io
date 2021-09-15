@@ -466,7 +466,7 @@ app = do
   currentHref <- getHrefWithoutHash
   shpadoinkle id runSnabbdom model (view today currentHref debouncer) stage
 
-  threadDelay 1000
+  threadDelay 500
 
   context <- getContext
   let initialChartData = batchComputed initialState
@@ -477,7 +477,7 @@ app = do
   setBadgeTextColor
   let go () newState = do
         setStorage "budgetable" newState
-        threadDelay 1000
+        threadDelay 500
         let newChartData = batchComputed newState
         oldChartData <- readTVarIO chartDataVar
         when (newChartData /= oldChartData) $ do

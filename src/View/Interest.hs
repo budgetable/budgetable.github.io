@@ -74,18 +74,19 @@ interestEdit debouncer i = div [className "form-group"]
         Right new -> pure . pur $ const new
 
 interestView :: Interest -> Html m a
-interestView i = text $ T.pack (printf "0.3f" i) <> "%"
+interestView i = text $ T.pack (printf "%.3f" i) <> "%"
 
 compoundingInterestEdit :: MonadJSM m => Debouncer m T.Text -> CompoundingInterest -> [Html m CompoundingInterest]
 compoundingInterestEdit debouncer (CompoundingInterest interest r) =
-  [ div [className "col"] . (: []) $
+  [ div [className "col-6 col-md-4"] . (: []) $
     onRecord #compoundingInterestAnnualRate (interestEdit debouncer interest)
-  , div [className "col"] $
+  , div [className "col-12 col-md-4"] $
     map (onRecord #compoundingInterestInterval) (repeatingIntervalEdit r)
   ]
 
-compoundingInterestView :: CompoundingInterest -> Html m a
-compoundingInterestView (CompoundingInterest interest r) = div [className "row"]
+compoundingInterestView :: CompoundingInterest -> [Html m a]
+compoundingInterestView (CompoundingInterest interest r) =
   [ interestView interest
+  , " APR compounded "
   , repeatingIntervalView r
   ]
