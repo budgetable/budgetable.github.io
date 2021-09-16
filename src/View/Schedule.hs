@@ -1,13 +1,15 @@
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module View.Schedule where
 
 import           Finance.DayOf               (DayOfWeek (Sun),
                                               prettyPrintDayOfWeek)
-import           Finance.Schedule            (RepeatingInterval (..),
+import           Finance.Schedule            (Repeating (..),
+                                              RepeatingInterval (..),
                                               Schedule (..), isRepeating)
 import           View.Day                    (dayEdit)
 
@@ -19,11 +21,13 @@ import           Shpadoinkle.Html            (checked, className, div, input',
                                               label, label_, max, min, onCheckM,
                                               onInput, onOption, option, select,
                                               selected, step, type', value)
-import           Shpadoinkle.Lens            (onSum)
+import           Shpadoinkle.Lens            (onRecord, onSum)
 
+import           Control.Lens                ((.~), (?~))
+import           Control.Lens.Prism          (_Just)
 import           Control.Monad.IO.Class      (MonadIO (liftIO))
 import           Data.Generics.Labels        ()
-import           Data.Maybe                  (fromMaybe)
+import           Data.Maybe                  (fromMaybe, isJust)
 import qualified Data.Text                   as T
 import           Data.Time.Clock             (getCurrentTime, utctDay)
 import           Language.Javascript.JSaddle (fromJSValUnchecked, makeObject,
@@ -53,7 +57,7 @@ isRepeatingPickedDifferent r p = case (r,p) of
 
 scheduleEdit :: forall m. MonadIO m => Schedule -> [Html m Schedule]
 scheduleEdit s =
-  [ div [className "col-md-2"] . (: []) $ div [className "form-check"]
+  [ div [className "col-md-2"] . (: []) $ div [className "form-check form-switch"]
     [ input'
       [ type' "checkbox"
       , checked $ isRepeating s
@@ -66,20 +70,77 @@ scheduleEdit s =
   where
     checkedRepeating :: Bool -> m (Schedule -> Schedule)
     checkedRepeating r
-      | r = pure . const $ RepeatingInterval RepeatingDaily
+      | r = pure . const . RepeatingSchedule $ Repeating RepeatingDaily Nothing Nothing
       | otherwise = do
           today <- utctDay <$> liftIO getCurrentTime
           pure . const $ DateSchedule today
     schedule = case s of
       DateSchedule day ->
         [div [className "col"] . (: []) $ onSum #_DateSchedule (dayEdit day)]
-      RepeatingInterval r ->
-        map (onSum #_RepeatingInterval) (repeatingIntervalEdit r)
+      RepeatingSchedule r ->
+        map (onSum #_RepeatingSchedule) (repeatingEdit r)
 
 scheduleView :: Schedule -> Html m a
 scheduleView s = case s of
-  RepeatingInterval r -> repeatingIntervalView r
+  RepeatingSchedule r -> repeatingView r
   DateSchedule day    -> text $ "once on " <> T.pack (show day)
+
+repeatingEdit :: forall m. MonadIO m => Repeating -> [Html m Repeating]
+repeatingEdit Repeating{..} =
+  [ div [] $ onRecord #repeatingInterval <$> repeatingIntervalEdit repeatingInterval
+  , div []
+    [ div [className "form-check form-switch"]
+      [ input'
+        [ type' "checkbox"
+        , checked $ isJust repeatingBegin
+        , onCheckM checkedBegin
+        , className "form-check-input"
+        ]
+      , label [className "form-check-label"] ["Has Start Date?"]
+      ]
+    , case repeatingBegin of
+        Nothing -> ""
+        Just b  -> onSum (#repeatingBegin . _Just) (dayEdit b)
+    ]
+  , div []
+    [ div [className "form-check form-switch"]
+      [ input'
+        [ type' "checkbox"
+        , checked $ isJust repeatingEnd
+        , onCheckM checkedEnd
+        , className "form-check-input"
+        ]
+      , label [className "form-check-label"] ["Has End Date?"]
+      ]
+    , case repeatingEnd of
+        Nothing -> ""
+        Just b  -> onSum (#repeatingEnd . _Just) (dayEdit b)
+    ]
+  ]
+  where
+    checkedBegin :: Bool -> m (Repeating -> Repeating)
+    checkedBegin r
+      | r = do
+          today <- utctDay <$> liftIO getCurrentTime
+          pure $ #repeatingBegin ?~ today
+      | otherwise = pure $ #repeatingBegin .~ Nothing
+    checkedEnd :: Bool -> m (Repeating -> Repeating)
+    checkedEnd r
+      | r = do
+          today <- utctDay <$> liftIO getCurrentTime
+          pure $ #repeatingEnd ?~ today
+      | otherwise = pure $ #repeatingEnd .~ Nothing
+
+repeatingView :: Repeating -> Html m a
+repeatingView Repeating{..} = div []
+  [ repeatingIntervalView repeatingInterval
+  , case repeatingBegin of
+      Nothing -> ""
+      Just b  -> text $ "beginning on " <> T.pack (show b)
+  , case repeatingEnd of
+      Nothing -> ""
+      Just e  -> text $ "ending on " <> T.pack (show e)
+  ]
 
 repeatingIntervalEdit :: RepeatingInterval -> [Html m RepeatingInterval]
 repeatingIntervalEdit r =
