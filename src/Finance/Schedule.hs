@@ -45,9 +45,31 @@ instance Schedulable RepeatingInterval where
       let (y,m,d) = toGregorian day
       in  dayInYear == monthAndDayToDayOfYear (isLeapYear y) m d
 
+data Repeating = Repeating
+  { repeatingInterval :: RepeatingInterval
+  , repeatingBegin    :: Maybe Day
+  , repeatingEnd      :: Maybe Day
+  } deriving (Show, Read, Eq, Ord, Generic)
+instance NFData Repeating
+instance Binary Repeating
+instance Schedulable Repeating where
+  isApplicableOn (Repeating i mB mE) day = case mB of
+    Nothing -> hasEnd
+    Just b
+      | day < b -> False
+      | otherwise -> hasEnd
+    where
+      hasEnd = case mE of
+        Nothing -> continue
+        Just e
+          | day > e -> False
+          | otherwise -> continue
+        where
+          continue = isApplicableOn i day
+
 -- | The schedule of a transfer
 data Schedule
-  = RepeatingInterval RepeatingInterval -- ^ on some repeating schedule
+  = RepeatingSchedule Repeating -- ^ on some repeating schedule
   | DateSchedule Day -- ^ on some specific day (should be in the future)
   deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Schedule
@@ -55,8 +77,8 @@ instance Binary Schedule
 instance Schedulable Schedule where
   isApplicableOn t day = case t of
     DateSchedule day'   -> day == day'
-    RepeatingInterval r -> isApplicableOn r day
+    RepeatingSchedule r -> isApplicableOn r day
 isRepeating :: Schedule -> Bool
-isRepeating (RepeatingInterval _) = True
+isRepeating (RepeatingSchedule _) = True
 isRepeating _                     = False
 
