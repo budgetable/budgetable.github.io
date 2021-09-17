@@ -37,6 +37,7 @@ import           Control.Lens                (Lens', lens, (%~), (.~))
 import           Control.Lens.At             (ix)
 import           Control.Lens.Combinators    (imap)
 import           Control.Monad.IO.Class      (MonadIO (liftIO))
+import           Data.Default                (def)
 import           Data.Generics.Labels        ()
 import qualified Data.Map                    as Map
 import           Data.Text                   (Text)
@@ -190,12 +191,11 @@ financePlanEdit accounts debouncer FinancePlan{..} = div [className "row finance
           | isFinancePlanPickedDifferent fpType p = case p of
               -- sets to a new finance plan without any information
               PickerFinancePlanTransfer ->
-                fOld { financePlanType = FinancePlanTypeTransfer
-                        (uncurry (uncurry Transfer blankAccount) blankAccount) } -- TODO more elegance
+                fOld { financePlanType = FinancePlanTypeTransfer def }
               PickerFinancePlanIncome ->
-                fOld { financePlanType = FinancePlanTypeIncome (uncurry Income blankAccount) }
+                fOld { financePlanType = FinancePlanTypeIncome def }
               PickerFinancePlanCost ->
-                fOld { financePlanType = FinancePlanTypeCost (uncurry Cost blankAccount) }
+                fOld { financePlanType = FinancePlanTypeCost def }
           | otherwise = fOld
     getAccount aId = case Map.lookup aId accounts of
       Nothing -> error $ "Couldn't find " <> show aId <> " in " <> show accounts

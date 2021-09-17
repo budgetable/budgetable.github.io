@@ -12,11 +12,11 @@ import           Bootstrap.Modal               (modal)
 import           Chart                         (ChartData, InitialChart (..))
 import           Debouncer                     (Debouncer)
 import           Finance.Account               (AccountAux, AccountId,
-                                                blankAccount, mkAccounts)
+                                                mkAccounts)
 import           Finance.Plan                  (Cost (..), FinancePlan (..),
                                                 FinancePlanType (..),
-                                                Income (..), Transfer (..))
-import           Finance.Schedule              (Schedule (DateSchedule))
+                                                Income (..), Transfer (..),
+                                                defFinancePlan)
 import           Model                         (ComputeBatchPicker (..),
                                                 Model (..), batchComputed,
                                                 decodeFromHash, emptyModel,
@@ -397,17 +397,8 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
         newButton :: Html m [(FinancePlan, Bool)]
         newButton =
           button
-            [onClick (<> [(blankFinancePlan, True)]), className "btn btn-secondary"]
+            [onClick (<> [(defFinancePlan today, True)]), className "btn btn-secondary"]
             ["Add New Finance Plan"]
-          where
-            blankFinancePlan =
-              FinancePlan
-                (FinancePlanTypeTransfer $
-                   uncurry (uncurry Transfer blankAccount)
-                      blankAccount)
-                [DateSchedule today]
-                0
-                ""
 
 app :: JSM ()
 app = do

@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
@@ -20,16 +21,19 @@ import           Shpadoinkle.Continuation    (done, pur)
 import           Shpadoinkle.Html            (checked, className, div, div_,
                                               input', label, label_, max, min,
                                               onCheckM, onInput, onOption,
-                                              option, select, selected, step,
-                                              type', value)
+                                              option, placeholder, select,
+                                              selected, step, type', value)
 import           Shpadoinkle.Lens            (onRecord, onSum)
 
 import           Control.Lens                ((.~), (?~))
 import           Control.Lens.Prism          (_Just)
+import           Control.Lens.Tuple          (_1, _2)
 import           Control.Monad.IO.Class      (MonadIO (liftIO))
+import           Data.Default                (def)
 import           Data.Generics.Labels        ()
-import           Data.Maybe                  (fromMaybe, isJust)
+import           Data.Maybe                  (fromMaybe, isJust, isNothing)
 import qualified Data.Text                   as T
+import           Data.Time.Calendar          (Day)
 import           Data.Time.Clock             (getCurrentTime, utctDay)
 import           Language.Javascript.JSaddle (fromJSValUnchecked, makeObject,
                                               unsafeGetProp)
@@ -71,7 +75,7 @@ scheduleEdit s =
   where
     checkedRepeating :: Bool -> m (Schedule -> Schedule)
     checkedRepeating r
-      | r = pure . const . RepeatingSchedule $ Repeating RepeatingDaily Nothing Nothing
+      | r = pure . const $ RepeatingSchedule def
       | otherwise = do
           today <- utctDay <$> liftIO getCurrentTime
           pure . const $ DateSchedule today
@@ -90,15 +94,55 @@ repeatingEdit :: forall m. MonadIO m => Repeating -> [Html m Repeating]
 repeatingEdit Repeating{..} =
   [ div [className "col-md-10"] . (: []) . div [className "row"] $
       onRecord #repeatingInterval <$> repeatingIntervalEdit repeatingInterval
+  , div [className "col-12"] $
+    [ div [className "form-check form-switch"]
+      [ let checkedSkipping s
+              | s = do
+                  today <- utctDay <$> liftIO getCurrentTime
+                  pure $ #repeatingSkipping ?~ (today, 0)
+              | otherwise = pure $ #repeatingSkipping .~ Nothing
+        in  input'
+              [ type' "checkbox"
+              , checked $ isJust repeatingSkipping
+              , onCheckM checkedSkipping
+              , className "form-check-input"
+              ]
+      , label [className "form-check-label"] ["Skips Intervals?"] -- FIXME add help note
+      ]
+    ] <> case repeatingSkipping of
+        Nothing -> []
+        Just (sDay,sTimes) ->
+          [ label_ ["Starting Day:"] -- FIXME add help note
+          , onSum (#repeatingSkipping . _Just . _1) (dayEdit sDay) -- FIXME add validation / labels
+          , label_ ["Number of Skips per Interval:"]
+          , let changedSkipping t = case readMaybe (T.unpack t) of
+                  Nothing -> id
+                  Just x  -> #repeatingSkipping . _Just . _2 .~ x
+            in  input'
+                  [ type' "number"
+                  , min "0"
+                  , step "1"
+                  , placeholder "Number of Skips"
+                  , value . T.pack $ show sTimes
+                  , onInput changedSkipping
+                  , className "form-control"
+                  ]
+          ]
   , div [className "col-12"]
     [ div [className "form-check form-switch"]
-      [ input'
-        [ type' "checkbox"
-        , checked $ isJust repeatingBegin
-        , onCheckM checkedBegin
-        , className "form-check-input"
-        ]
-      , label [className "form-check-label"] ["Has Start Date?"]
+      [ let checkedBegin :: Bool -> m (Repeating -> Repeating)
+            checkedBegin r
+              | r = do
+                  today <- utctDay <$> liftIO getCurrentTime
+                  pure $ #repeatingBegin ?~ today
+              | otherwise = pure $ #repeatingBegin .~ Nothing
+        in  input'
+              [ type' "checkbox"
+              , checked $ isJust repeatingBegin
+              , onCheckM checkedBegin
+              , className "form-check-input"
+              ]
+      , label [className "form-check-label"] ["Has Limiting Start Date?"]
       ]
     , case repeatingBegin of
         Nothing -> ""
@@ -106,36 +150,29 @@ repeatingEdit Repeating{..} =
     ]
   , div [className "col-12"]
     [ div [className "form-check form-switch"]
-      [ input'
-        [ type' "checkbox"
-        , checked $ isJust repeatingEnd
-        , onCheckM checkedEnd
-        , className "form-check-input"
-        ]
-      , label [className "form-check-label"] ["Has End Date?"]
+      [ let checkedEnd :: Bool -> m (Repeating -> Repeating)
+            checkedEnd r
+              | r = do
+                  today <- utctDay <$> liftIO getCurrentTime
+                  pure $ #repeatingEnd ?~ today
+              | otherwise = pure $ #repeatingEnd .~ Nothing
+        in  input'
+              [ type' "checkbox"
+              , checked $ isJust repeatingEnd
+              , onCheckM checkedEnd
+              , className "form-check-input"
+              ]
+      , label [className "form-check-label"] ["Has Limiting End Date?"] -- FIXME add help tooltips
       ]
     , case repeatingEnd of
         Nothing -> ""
         Just b  -> onSum (#repeatingEnd . _Just) (dayEdit b)
     ]
   ]
-  where
-    checkedBegin :: Bool -> m (Repeating -> Repeating)
-    checkedBegin r
-      | r = do
-          today <- utctDay <$> liftIO getCurrentTime
-          pure $ #repeatingBegin ?~ today
-      | otherwise = pure $ #repeatingBegin .~ Nothing
-    checkedEnd :: Bool -> m (Repeating -> Repeating)
-    checkedEnd r
-      | r = do
-          today <- utctDay <$> liftIO getCurrentTime
-          pure $ #repeatingEnd ?~ today
-      | otherwise = pure $ #repeatingEnd .~ Nothing
 
 repeatingView :: Repeating -> Html m a
 repeatingView Repeating{..} = div_
-  [ repeatingIntervalView repeatingInterval
+  [ repeatingIntervalView repeatingSkipping repeatingInterval
   , case repeatingBegin of
       Nothing -> ""
       Just b  -> text $ ", beginning on " <> T.pack (show b)
@@ -241,13 +278,20 @@ repeatingIntervalEdit r =
           ]
         ]
 
-repeatingIntervalView :: RepeatingInterval -> Html m a
-repeatingIntervalView r = case r of
-  RepeatingDaily -> "everyday"
-  RepeatingWeekly w -> text $ "every " <> prettyPrintDayOfWeek w
-  RepeatingMonthly m -> text $ "every " <> T.pack (show m) <> daySuffix m <> " per month"
-  RepeatingYearly d -> text $ "every " <> T.pack (show d) <> daySuffix d <> " day per year"
+repeatingIntervalView :: Maybe (Day, Integer) -> RepeatingInterval -> Html m a
+repeatingIntervalView mSkipping r = text $ case r of
+  RepeatingDaily
+    | isNothing mSkipping -> "everyday"
+    | otherwise -> "every " <> skipping <> "day" <> skippingStarting
+  RepeatingWeekly w -> "every " <> skipping <> prettyPrintDayOfWeek w <> skippingStarting
+  RepeatingMonthly m
+    | isNothing mSkipping -> "every " <> intWithSuffix m <> " per month"
+    | otherwise -> "every " <> skipping <> "month on the " <> intWithSuffix m <> skippingStarting
+  RepeatingYearly d
+    | isNothing mSkipping -> "every " <> intWithSuffix d <> " day per year"
+    | otherwise -> "every " <> skipping <> "year on the " <> intWithSuffix d <> " day per year" <> skippingStarting
   where
+    intWithSuffix i = T.pack (show i) <> daySuffix i
     daySuffix x
       | deca < 20 && deca > 10 = "th"
       | otherwise = notTeen
@@ -260,3 +304,11 @@ repeatingIntervalView r = case r of
           | otherwise = "th"
           where
             centa = x `mod` 10
+    skipping = case mSkipping of
+      Nothing -> ""
+      Just (_,i)
+        | i == 1 -> "other "
+        | otherwise -> intWithSuffix (i + 1) <> " "
+    skippingStarting = case mSkipping of
+      Nothing    -> ""
+      Just (d,_) -> ", starting on " <> T.pack (show d)

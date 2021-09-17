@@ -9,14 +9,16 @@ import           Finance.Account      (AccountAux (..), AccountId,
                                        AccountLimit (OnlyNegative, OnlyPositive),
                                        Accounts)
 import           Finance.Dollar       (Dollar)
-import           Finance.Schedule     (Schedulable (..), Schedule)
+import           Finance.Schedule     (Schedulable (..), Schedule, defSchedule)
 
 import           Control.DeepSeq      (NFData)
 import           Control.Lens         ((%~), (.~))
 import           Data.Binary          (Binary)
+import           Data.Default         (Default (..))
 import           Data.Generics.Labels ()
 import qualified Data.Map             as Map
 import           Data.Text            (Text)
+import           Data.Time.Calendar   (Day)
 import           GHC.Generics         (Generic)
 
 
@@ -32,6 +34,8 @@ data Transfer = Transfer
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Transfer
 instance Binary Transfer
+instance Default Transfer where
+  def = Transfer def def def def
 
 -- | Genesis of value for accounts
 data Income = Income
@@ -40,6 +44,8 @@ data Income = Income
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Income
 instance Binary Income
+instance Default Income where
+  def = Income def def
 
 -- | Burning of value for accounts
 data Cost = Cost
@@ -48,6 +54,8 @@ data Cost = Cost
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Cost
 instance Binary Cost
+instance Default Cost where
+  def = Cost def def
 
 data FinancePlanType
   = FinancePlanTypeTransfer Transfer
@@ -56,6 +64,8 @@ data FinancePlanType
   deriving (Show, Read, Eq, Ord, Generic)
 instance NFData FinancePlanType
 instance Binary FinancePlanType
+instance Default FinancePlanType where
+  def = FinancePlanTypeTransfer def
 
 data FinancePlan = FinancePlan
   { financePlanType     :: FinancePlanType -- ^ type of the financial plan
@@ -89,3 +99,11 @@ instance ApplyTransaction FinancePlan where
       Map.adjust (#accountAuxBalance %~ (+ x)) incomeAccount balances
     FinancePlanTypeCost Cost{costAccount} ->
       Map.adjust (#accountAuxBalance %~ (\y -> y - x)) costAccount balances
+
+defFinancePlan :: Day -> FinancePlan
+defFinancePlan today = FinancePlan
+  { financePlanType     = def
+  , financePlanSchedule = [defSchedule today]
+  , financePlanValue    = def
+  , financePlanNote     = ""
+  }

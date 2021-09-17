@@ -10,6 +10,7 @@ import           Control.Applicative  ((<|>))
 import           Control.DeepSeq      (NFData)
 import           Data.Attoparsec.Text (Parser, char, digit, many1)
 import           Data.Binary          (Binary)
+import           Data.Default         (Default (..))
 import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
@@ -22,6 +23,8 @@ newtype Cent = Cent {getCent :: Integer}
 -- | Cent, but with a prettier format
 newtype Dollar = Dollar {getDollar :: Cent}
   deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum, NFData, Binary)
+instance Default Dollar where
+  def = 0
 dollarPrinter :: Dollar -> Text
 dollarPrinter (Dollar (Cent xs)) =
   if  | xsLen == 1 -> "0.0" <> xs'
