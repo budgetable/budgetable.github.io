@@ -16,6 +16,7 @@ library
       Finance.Plan
       Finance.Schedule
       Model
+      View
       View.Account
       View.Balances
       View.Day
@@ -46,6 +47,7 @@ library
     , scientific
     , text
     , time == 1.8.0.2
+    , unliftio
   default-language:    Haskell2010
   ghc-options:
     -Wall

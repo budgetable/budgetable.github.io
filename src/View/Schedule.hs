@@ -32,7 +32,7 @@ import           Control.Lens.Tuple          (_1, _2)
 import           Control.Monad.IO.Class      (MonadIO (liftIO))
 import           Data.Default                (def)
 import           Data.Generics.Labels        ()
-import           Data.Maybe                  (fromMaybe, isJust, isNothing)
+import           Data.Maybe                  (fromMaybe, isJust)
 import qualified Data.Text                   as T
 import           Data.Time.Calendar          (Day)
 import           Data.Time.Clock             (getCurrentTime, utctDay)
@@ -310,14 +310,14 @@ repeatingIntervalEdit r =
 repeatingIntervalView :: Maybe (Day, Integer) -> RepeatingInterval -> Html m a
 repeatingIntervalView mSkipping r = text $ case r of
   RepeatingDaily
-    | isNothing mSkipping -> "everyday"
+    | isZero -> "everyday"
     | otherwise -> "every " <> skipping <> "day" <> skippingStarting
   RepeatingWeekly w -> "every " <> skipping <> prettyPrintDayOfWeek w <> skippingStarting
   RepeatingMonthly m
-    | isNothing mSkipping -> "every " <> intWithSuffix m <> " per month"
+    | isZero -> "every " <> intWithSuffix m <> " per month"
     | otherwise -> "every " <> skipping <> "month on the " <> intWithSuffix m <> skippingStarting
   RepeatingYearly d
-    | isNothing mSkipping -> "every " <> intWithSuffix d <> " day per year"
+    | isZero -> "every " <> intWithSuffix d <> " day per year"
     | otherwise -> "every " <> skipping <> "year on the " <> intWithSuffix d <> " day per year" <> skippingStarting
   where
     intWithSuffix i = T.pack (show i) <> daySuffix i
@@ -333,6 +333,10 @@ repeatingIntervalView mSkipping r = text $ case r of
           | otherwise = "th"
           where
             centa = x `mod` 10
+    isZero = case mSkipping of
+      Nothing    -> True
+      Just (_,0) -> True
+      _          -> False
     skipping = case mSkipping of
       Nothing -> ""
       Just (_,i)
