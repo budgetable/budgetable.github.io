@@ -6,6 +6,7 @@
 
 module View.Balances where
 
+import           Bootstrap.Modal          (modal)
 import           Debouncer                (Debouncer)
 import           Finance.Account          (AccountAux (..), AccountId (..),
                                            Accounts, blankAccount)
@@ -14,10 +15,9 @@ import           View.Account             (accountEdit, accountViewFull)
 
 import           Prelude                  hiding (div)
 import           Shpadoinkle              (Html, MonadJSM, text)
-import           Shpadoinkle.Html         (button, button', checked, className,
-                                           div, h5, id', input', label, onCheck,
-                                           onClick, p_, styleProp, tabIndex,
-                                           textProperty, type')
+import           Shpadoinkle.Html         (button, checked, className, div, id',
+                                           input', label, onCheck, onClick, p_,
+                                           styleProp, textProperty, type')
 import           Shpadoinkle.Lens         (onSum)
 
 import           Control.Lens.At          (ix)
@@ -79,36 +79,24 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                       , styleProp [("margin-top","0.5em")]
                       , onClick $ moveDown idx
                       ] ["&#8595;"]
-                  , div
-                    [ className "modal fade"
-                    , tabIndex (-1)
-                    , id' $ "dialog-account-delete-" <> T.pack (show idx)
+                  , modal
+                    []
+                    ("dialog-account-delete-" <> T.pack (show idx))
+                    "Are you sure?"
+                    [ p_ . (: []) . text $
+                        let accName
+                              | aId == "" = "this account with no name"
+                              | otherwise = T.pack (show aId)
+                        in  "Are you sure you want to delete " <> accName <> "?"
                     ]
-                    [ div [className "modal-dialog"]
-                      [ div [className "modal-content"] $
-                        let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
-                        in  [ div [className "modal-header"]
-                              [ h5 [className "modal-title"] ["Are you sure?"]
-                              , button' [className "btn-close", dismiss]
-                              ]
-                            , div [className "modal-body"] . (: []) . p_ . (: []) . text $
-                              let accName
-                                    | aId == "" = "this account with no name"
-                                    | otherwise = T.pack (show aId)
-                              in  "Are you sure you want to delete " <> accName <> "?"
-                            , div [className "modal-footer"]
-                              [ button [className "btn btn-secondary", dismiss]
-                                ["Cancel"]
-                              , button
-                                [ className "btn btn-danger"
-                                , dismiss
-                                , onClick $ dropIndex idx
-                                ]
-                                ["Yes, delete this account"]
-                              ]
-                            ]
-                      ]
-                    ]
+                    (\dismiss ->
+                      [ button
+                        [ className "btn btn-danger"
+                        , dismiss
+                        , onClick $ dropIndex idx
+                        ]
+                        ["Yes, delete this account"]
+                      ])
                   ]
                 ]
     newButton :: Html m [(AccountId, AccountAux)]
