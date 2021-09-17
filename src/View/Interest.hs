@@ -88,5 +88,5 @@ compoundingInterestView :: CompoundingInterest -> [Html m a]
 compoundingInterestView (CompoundingInterest interest r) =
   [ interestView interest
   , " APR compounded "
-  , repeatingIntervalView r
+  , repeatingIntervalView Nothing r
   ]

@@ -9,6 +9,7 @@ import           Finance.Schedule            (RepeatingInterval (..),
 
 import           Control.DeepSeq             (NFData)
 import           Data.Binary                 (Binary)
+import           Data.Default                (Default (..))
 import           Data.Time.Calendar          (Day, fromGregorian, isLeapYear,
                                               toGregorian)
 import           Data.Time.Calendar.WeekDate (toWeekDate)
@@ -19,6 +20,8 @@ import           Text.Printf                 (PrintfArg)
 newtype Interest = Interest {getInterest :: Double}
   deriving (Eq, Ord, Show, Read, Num, NFData, Real, RealFrac, Fractional,
             Generic, RealFloat, Floating, PrintfArg, Binary)
+instance Default Interest where
+  def = Interest 0
 
 data CompoundingInterest = CompoundingInterest
   { compoundingInterestAnnualRate :: Interest -- ^ APR / APY of the interest rate
@@ -28,6 +31,8 @@ instance NFData CompoundingInterest
 instance Binary CompoundingInterest
 instance Schedulable CompoundingInterest where
   isApplicableOn (CompoundingInterest _ interval) day = isApplicableOn interval day
+instance Default CompoundingInterest where
+  def = CompoundingInterest def (RepeatingMonthly 1)
 
 compoundingRateWhenApplied :: CompoundingInterest -> Day -> Interest
 compoundingRateWhenApplied (CompoundingInterest rate' interval) day = case interval of
