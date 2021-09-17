@@ -17,10 +17,11 @@ import           Prelude                     hiding (div, max, min)
 import           Shpadoinkle                 (Html, RawNode (..), listenRaw,
                                               text)
 import           Shpadoinkle.Continuation    (done, pur)
-import           Shpadoinkle.Html            (checked, className, div, input',
-                                              label, label_, max, min, onCheckM,
-                                              onInput, onOption, option, select,
-                                              selected, step, type', value)
+import           Shpadoinkle.Html            (checked, className, div, div_,
+                                              input', label, label_, max, min,
+                                              onCheckM, onInput, onOption,
+                                              option, select, selected, step,
+                                              type', value)
 import           Shpadoinkle.Lens            (onRecord, onSum)
 
 import           Control.Lens                ((.~), (?~))
@@ -76,19 +77,20 @@ scheduleEdit s =
           pure . const $ DateSchedule today
     schedule = case s of
       DateSchedule day ->
-        [div [className "col"] . (: []) $ onSum #_DateSchedule (dayEdit day)]
+        [div [className "col-md-10"] . (: []) $ onSum #_DateSchedule (dayEdit day)]
       RepeatingSchedule r ->
         map (onSum #_RepeatingSchedule) (repeatingEdit r)
 
 scheduleView :: Schedule -> Html m a
 scheduleView s = case s of
   RepeatingSchedule r -> repeatingView r
-  DateSchedule day    -> text $ "once on " <> T.pack (show day)
+  DateSchedule day    -> div_ . (: []) . text $ "once on " <> T.pack (show day)
 
 repeatingEdit :: forall m. MonadIO m => Repeating -> [Html m Repeating]
 repeatingEdit Repeating{..} =
-  [ div [] $ onRecord #repeatingInterval <$> repeatingIntervalEdit repeatingInterval
-  , div []
+  [ div [className "col-md-10"] . (: []) . div [className "row"] $
+      onRecord #repeatingInterval <$> repeatingIntervalEdit repeatingInterval
+  , div [className "col-12"]
     [ div [className "form-check form-switch"]
       [ input'
         [ type' "checkbox"
@@ -102,7 +104,7 @@ repeatingEdit Repeating{..} =
         Nothing -> ""
         Just b  -> onSum (#repeatingBegin . _Just) (dayEdit b)
     ]
-  , div []
+  , div [className "col-12"]
     [ div [className "form-check form-switch"]
       [ input'
         [ type' "checkbox"
@@ -132,14 +134,18 @@ repeatingEdit Repeating{..} =
       | otherwise = pure $ #repeatingEnd .~ Nothing
 
 repeatingView :: Repeating -> Html m a
-repeatingView Repeating{..} = div []
+repeatingView Repeating{..} = div_
   [ repeatingIntervalView repeatingInterval
   , case repeatingBegin of
       Nothing -> ""
-      Just b  -> text $ "beginning on " <> T.pack (show b)
+      Just b  -> text $ ", beginning on " <> T.pack (show b)
   , case repeatingEnd of
       Nothing -> ""
-      Just e  -> text $ "ending on " <> T.pack (show e)
+      Just e  ->
+        let mAnd = case repeatingBegin of
+              Nothing -> ""
+              Just _  -> "and "
+        in  text $ ", " <> mAnd <> "ending on " <> T.pack (show e)
   ]
 
 repeatingIntervalEdit :: RepeatingInterval -> [Html m RepeatingInterval]

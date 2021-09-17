@@ -5,6 +5,7 @@ version:             0.1.0.0
 library
   exposed-modules:
       Bootstrap.Popover
+      Bootstrap.Modal
       Chart
       Debouncer
       Finance
@@ -19,9 +20,10 @@ library
       View.Balances
       View.Day
       View.Dollar
-      View.FinancePlan
+      View.Plan
       View.Interest
       View.Schedule
+      Utils.List
   hs-source-dirs:      src
   build-depends:
       base ^>=4.12.0.0

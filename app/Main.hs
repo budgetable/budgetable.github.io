@@ -8,7 +8,7 @@
 
 module Main where
 
-
+import           Bootstrap.Modal               (modal)
 import           Chart                         (ChartData, InitialChart (..))
 import           Debouncer                     (Debouncer)
 import           Finance.Account               (AccountAux, AccountId,
@@ -23,9 +23,10 @@ import           Model                         (ComputeBatchPicker (..),
                                                 encodeForHash,
                                                 modelToUint8Array,
                                                 uint8ArrayToModel)
+import           Utils.List                    (dropIndex, moveDown, moveUp)
 import           View.Balances                 (balancesEdit)
 import           View.Day                      (dayEdit)
-import           View.FinancePlan              (financePlanEdit,
+import           View.Plan                     (financePlanEdit,
                                                 financePlanView)
 
 import           Prelude                       hiding (div, log, min, span)
@@ -34,16 +35,15 @@ import           Shpadoinkle                   (Html, JSM, MonadJSM,
                                                 shpadoinkle, text)
 import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (done, pur, shouldUpdate)
-import           Shpadoinkle.Html              (a, accept, button, button',
-                                                canvas', checked, className,
-                                                debounceRaw, div, em_, footer_,
-                                                h1_, h2_, h3_, h4_, h5, header,
-                                                height, hr'_, href, id', input',
-                                                label, label_, main', min,
-                                                onCheck, onClick, onClickM,
-                                                onOption, option, p, p_,
-                                                section_, select, selected,
-                                                span, step, styleProp, tabIndex,
+import           Shpadoinkle.Html              (a, accept, button, canvas',
+                                                checked, className, debounceRaw,
+                                                div, em_, footer_, h1_, h2_,
+                                                h3_, h4_, header, height, hr'_,
+                                                href, id', input', label,
+                                                label_, main', min, onCheck,
+                                                onClick, onClickM, onOption,
+                                                option, p, p_, section_, select,
+                                                selected, span, step, styleProp,
                                                 target, textProperty, type',
                                                 value, width)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
@@ -142,66 +142,52 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
       , p [styleProp [("font-size","1.25rem"),("font-style","italic")]]
         ["Open-Source Budget Visualization Software"]
       ]
-    , div [className "col-12 col-sm-6", styleProp [("text-align","right")]]
-      [ button
-        [ className "btn btn-secondary"
-        , textProperty "data-bs-toggle" ("modal" :: Text)
-        , textProperty "data-bs-target" ("#dialog-import" :: Text)
-        ] ["Import"]
-      , "&nbsp;"
-      , div [className "modal fade", tabIndex (-1), id' "dialog-import", styleProp [("text-align","left")]]
-        [ div [className "modal-dialog"]
-          [ div [className "modal-content"] $
-            let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
-            in  [ div [className "modal-header"]
-                  [ h5 [className "modal-title"] ["Import"]
-                  , button' [className "btn-close", dismiss]
+    , div [className "col-12 col-sm-6", styleProp [("text-align","right")]] $
+      let alignLeft = styleProp [("text-align","left")]
+      in  [ button
+            [ className "btn btn-secondary"
+            , textProperty "data-bs-toggle" ("modal" :: Text)
+            , textProperty "data-bs-target" ("#dialog-import" :: Text)
+            ] ["Import"]
+          , "&nbsp;"
+          , modal
+              [alignLeft]
+              "dialog-import"
+              "Import"
+              [ p_ ["Select a budget file"]
+              , input' [type' "file", accept ".bgt", id' "import-file", className "form-control"]
+              ]
+              (\dismiss ->
+                [ button
+                  [ className "btn btn-primary"
+                  , dismiss
+                  , onClickM . liftIO $ do
+                      files <- getFiles
+                      filesLen <- filesLength files
+                      if filesLen == 0 then pure id
+                      else do
+                        file <- firstFile files
+                        stateModifierVar <- newEmptyTMVarIO
+                        cb <- asyncCallback1 $ \buff -> do
+                          buff' <- arrayBufferToUint8Array buff
+                          mModel <- uint8ArrayToModel buff'
+                          atomically . putTMVar stateModifierVar $ maybe id const mModel
+                        fileToArrayBuffer file cb
+                        atomically $ takeTMVar stateModifierVar
                   ]
-                , div [className "modal-body"]
-                  [ p_ ["Select a budget file"]
-                  , input' [type' "file", accept ".bgt", id' "import-file", className "form-control"]
-                  ]
-                , div [className "modal-footer"]
-                  [ button [className "btn btn-secondary", dismiss]
-                    ["Close"]
-                  , button
-                    [ className "btn btn-primary"
-                    , dismiss
-                    , onClickM . liftIO $ do
-                        files <- getFiles
-                        filesLen <- filesLength files
-                        if filesLen == 0 then pure id
-                        else do
-                          file <- firstFile files
-                          stateModifierVar <- newEmptyTMVarIO
-                          cb <- asyncCallback1 $ \buff -> do
-                            buff' <- arrayBufferToUint8Array buff
-                            mModel <- uint8ArrayToModel buff'
-                            atomically . putTMVar stateModifierVar $ maybe id const mModel
-                          fileToArrayBuffer file cb
-                          atomically $ takeTMVar stateModifierVar
-                    ]
-                    ["Import"]
-                  ]
-                ]
-          ]
-        ]
-      , button
-        [ className "btn btn-secondary"
-        , textProperty "data-bs-toggle" ("modal" :: Text)
-        , textProperty "data-bs-target" ("#dialog-export" :: Text)
-        ] ["Export"]
-      , "&nbsp;"
-      , div [className "modal fade", tabIndex (-1), id' "dialog-export", styleProp [("text-align","left")]]
-        [ div [className "modal-dialog"]
-          [ div [className "modal-content"] $
-            let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
-                shareLink = currentHref <> "#" <> unsafePerformIO (encodeForHash currentModel)
-            in  [ div [className "modal-header"]
-                  [ h5 [className "modal-title"] ["Export"]
-                  , button' [className "btn-close", dismiss]
-                  ]
-                , div [className "modal-body"]
+                  ["Import"]
+                ])
+          , button
+            [ className "btn btn-secondary"
+            , textProperty "data-bs-toggle" ("modal" :: Text)
+            , textProperty "data-bs-target" ("#dialog-export" :: Text)
+            ] ["Export"]
+          , "&nbsp;"
+          , let shareLink = currentHref <> "#" <> unsafePerformIO (encodeForHash currentModel)
+            in  modal
+                  [alignLeft]
+                  "dialog-export"
+                  "Export"
                   [ p [styleProp [("overflow-x","auto")]]
                     [ "Share link: "
                     , a [ href shareLink
@@ -210,44 +196,29 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
                         ] [text shareLink]
                     ]
                   ]
-                , div [className "modal-footer"]
-                  [ button [className "btn btn-secondary", dismiss]
-                    ["Close"]
-                  , a
-                    [ className "btn btn-primary"
-                    , href . unsafePerformIO $ dataToUrl =<< modelToUint8Array currentModel
-                    , textProperty "download" ("budget.bgt" :: Text)
-                    ]
-                    ["Export"]
-                  ]
-                ]
+                  (const
+                    [ a
+                      [ className "btn btn-primary"
+                      , href . unsafePerformIO $ dataToUrl =<< modelToUint8Array currentModel
+                      , textProperty "download" ("budget.bgt" :: Text)
+                      ]
+                      ["Export"]
+                    ])
+          , button
+            [ className "btn btn-secondary"
+            , textProperty "data-bs-toggle" ("modal" :: Text)
+            , textProperty "data-bs-target" ("#dialog-new" :: Text)
+            ] ["New"]
+          , modal
+              [alignLeft]
+              "dialog-new"
+              "Are you sure?"
+              [p_ ["Making a new budget will delete everything so far. Are you sure you want to start a new one?"]]
+              (\dismiss ->
+                [ button [className "btn btn-danger", onClick . const $ emptyModel today, dismiss]
+                  ["Yes, create a new budget"]
+                ])
           ]
-        ]
-      , button
-        [ className "btn btn-secondary"
-        , textProperty "data-bs-toggle" ("modal" :: Text)
-        , textProperty "data-bs-target" ("#dialog-new" :: Text)
-        ] ["New"]
-      , div [className "modal fade", tabIndex (-1), id' "dialog-new", styleProp [("text-align","left")]]
-        [ div [className "modal-dialog"]
-          [ div [className "modal-content"] $
-            let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
-            in  [ div [className "modal-header"]
-                  [ h5 [className "modal-title"] ["Are you sure?"]
-                  , button' [className "btn-close", dismiss]
-                  ]
-                , div [className "modal-body"] . (: []) . p_ . (: []) $
-                  "Making a new budget will delete everything so far. Are you sure you want to start a new one?"
-                , div [className "modal-footer"]
-                  [ button [className "btn btn-secondary", dismiss]
-                    ["Cancel"]
-                  , button [className "btn btn-danger", onClick . const $ emptyModel today, dismiss]
-                    ["Yes, create a new budget"]
-                  ]
-                ]
-          ]
-        ]
-      ]
     ]
   , hr'_
   , section_
@@ -389,61 +360,38 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
             <>
             ( if not isEditable then []
               else
-                [ div [className "row d-grid"] . (: []) $
-                    button
-                      [ className "btn btn-outline-danger"
-                      , textProperty "data-bs-toggle" ("modal" :: Text)
-                      , textProperty "data-bs-target" ("#dialog-finance-plan-delete-" <> T.pack (show idx))
-                      ] ["Delete"]
-                , div [className "row d-grid"] . (: []) $
-                    button
-                      [ className "btn btn-outline-secondary"
-                      , styleProp [("margin-top","0.5em")]
-                      , onClick $ \xs ->
-                          if idx == 0 then xs
-                          else take (idx - 1) xs -- everything before the next one up
-                            <> [xs !! idx] -- me
-                            <> take 1 (drop (idx - 1) xs) -- the one that was the next one up
-                            <> drop (idx + 1) xs -- everything after me
-                      ] ["&#8593;"]
-                , div [className "row d-grid"] . (: []) $
-                    button
-                      [ className "btn btn-outline-secondary"
-                      , styleProp [("margin-top","0.5em")]
-                      , onClick $ \xs ->
-                          if idx == length xs - 1 then xs
-                          else take idx xs -- everything before me
-                            <> take 1 (drop (idx + 1) xs) -- the next one after me
-                            <> [xs !! idx] -- me
-                            <> drop (idx + 2) xs -- everything after the next one down
-                      ] ["&#8595;"]
-                , div
-                  [ className "modal fade"
-                  , tabIndex (-1)
-                  , id' $ "dialog-finance-plan-delete-" <> T.pack (show idx)
-                  ]
-                  [ div [className "modal-dialog"]
-                    [ div [className "modal-content"] $
-                      let dismiss = textProperty "data-bs-dismiss" ("modal" :: Text)
-                      in  [ div [className "modal-header"]
-                            [ h5 [className "modal-title"] ["Are you sure?"]
-                            , button' [className "btn-close", dismiss]
-                            ]
-                          , div [className "modal-body"] . (: []) . p_ . (: []) $
-                            "Are you sure you want to delete this finance plan?"
-                          , div [className "modal-footer"]
-                            [ button [className "btn btn-secondary", dismiss]
-                              ["Cancel"]
-                            , button
-                              [ className "btn btn-danger"
-                              , onClick $ \xs -> take idx xs <> drop (idx + 1) xs
-                              , dismiss]
-                              ["Yes, delete this finance plan"]
-                            ]
-                          ]
+                let dialogIdent = "dialog-finance-plan-delete-" <> T.pack (show idx)
+                in  [ div [className "row d-grid"] . (: []) $
+                        button
+                          [ className "btn btn-outline-danger"
+                          , textProperty "data-bs-toggle" ("modal" :: Text)
+                          , textProperty "data-bs-target" ("#" <> dialogIdent)
+                          ] ["Delete"]
+                    , div [className "row d-grid"] . (: []) $
+                        button
+                          [ className "btn btn-outline-secondary"
+                          , styleProp [("margin-top","0.5em")]
+                          , onClick $ moveUp idx
+                          ] ["&#8593;"]
+                    , div [className "row d-grid"] . (: []) $
+                        button
+                          [ className "btn btn-outline-secondary"
+                          , styleProp [("margin-top","0.5em")]
+                          , onClick $ moveDown idx
+                          ] ["&#8595;"]
+                    , modal
+                      []
+                      dialogIdent
+                      "Are you sure?"
+                      [p_ ["Are you sure you want to delete this finance plan?"]]
+                      (\dismiss ->
+                        [ button
+                          [ className "btn btn-danger"
+                          , onClick $ dropIndex idx
+                          , dismiss]
+                          ["Yes, delete this finance plan"]
+                        ])
                     ]
-                  ]
-                ]
             )
           ]
         newButton :: Html m [(FinancePlan, Bool)]
@@ -457,7 +405,7 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
                 (FinancePlanTypeTransfer $
                    uncurry (uncurry Transfer blankAccount)
                       blankAccount)
-                (DateSchedule today)
+                [DateSchedule today]
                 0
                 ""
 

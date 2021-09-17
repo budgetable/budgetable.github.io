@@ -9,6 +9,7 @@ module View.Balances where
 import           Debouncer                (Debouncer)
 import           Finance.Account          (AccountAux (..), AccountId (..),
                                            Accounts, blankAccount)
+import           Utils.List               (dropIndex, moveDown, moveUp)
 import           View.Account             (accountEdit, accountViewFull)
 
 import           Prelude                  hiding (div)
@@ -70,23 +71,13 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                     button
                       [ className "btn btn-outline-secondary"
                       , styleProp [("margin-top","0.5em")]
-                      , onClick $ \xs' ->
-                          if idx == 0 then xs'
-                          else take (idx - 1) xs' -- everything before the next one up
-                            <> [xs' !! idx] -- me
-                            <> take 1 (drop (idx - 1) xs') -- the one that was the next one up
-                            <> drop (idx + 1) xs' -- everything after me
+                      , onClick $ moveUp idx
                       ] ["&#8593;"]
                   , div [className "row d-grid"] . (: []) $
                     button
                       [ className "btn btn-outline-secondary"
                       , styleProp [("margin-top","0.5em")]
-                      , onClick $ \xs' ->
-                          if idx == length xs' - 1 then xs'
-                          else take idx xs' -- everything before me
-                            <> take 1 (drop (idx + 1) xs') -- the next one after me
-                            <> [xs' !! idx] -- me
-                            <> drop (idx + 2) xs' -- everything after the next one down
+                      , onClick $ moveDown idx
                       ] ["&#8595;"]
                   , div
                     [ className "modal fade"
@@ -111,7 +102,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                               , button
                                 [ className "btn btn-danger"
                                 , dismiss
-                                , onClick $ \xsOld -> take idx xsOld <> drop (idx + 1) xsOld
+                                , onClick $ dropIndex idx
                                 ]
                                 ["Yes, delete this account"]
                               ]

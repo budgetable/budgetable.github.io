@@ -59,14 +59,14 @@ instance Binary FinancePlanType
 
 data FinancePlan = FinancePlan
   { financePlanType     :: FinancePlanType -- ^ type of the financial plan
-  , financePlanSchedule :: Schedule -- ^ when the finance plan is scheduled
+  , financePlanSchedule :: [Schedule] -- ^ when the finance plan is scheduled
   , financePlanValue    :: Dollar -- ^ the value of the finance plan
   , financePlanNote     :: Text -- ^ optional note for reference
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData FinancePlan
 instance Binary FinancePlan
 instance Schedulable FinancePlan where
-  isApplicableOn (FinancePlan _ s _ _) d = isApplicableOn s d
+  isApplicableOn (FinancePlan _ s _ _) d = any (`isApplicableOn` d) s
 instance ApplyTransaction FinancePlan where
   applyTransaction balances FinancePlan{financePlanType, financePlanValue = x} = case financePlanType of
     FinancePlanTypeTransfer (Transfer f faux t taux) -> case (Map.lookup f balances, Map.lookup t balances) of
