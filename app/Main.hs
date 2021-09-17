@@ -330,9 +330,8 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
       , a [href "https://www.buymeacoffee.com/athanclark", target "_blank"]
         [ "Buy me a "
         , span [styleProp [("text-decoration","line-through")]] ["coffee"]
-        , " beer"
+        , " beer! &#127867;"
         ]
-      , "."
       ]
     ]
   ]
