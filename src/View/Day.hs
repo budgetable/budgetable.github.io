@@ -105,6 +105,23 @@ dayEdit day = div [className "row"]
             , className "form-select"
             ] (mkDay <$> [1 .. gregorianMonthLength y m])
     ]
+  -- , div [className "col-auto"]
+  --   [ button
+  --     [ className "btn btn-secondary"
+  --     , styleProp [("margin-top","1.5em")]
+  --     , textProperty "data-bs-toggle" ("modal" :: Text)
+  --     , textProperty "data-bs-target" ("#dialog-date" :: Text)
+  --     ]
+  --     [i' [className "far fa-calendar-alt"]]
+  --   , modal
+  --     []
+  --     "dialog-date"
+  --     "Pick a Date"
+  --     [
+  --     ]
+  --     (const [])
+  --   ]
+  -- FIXME can't make a date picker right now
   ]
   where
     (y,m,d) = toGregorian day

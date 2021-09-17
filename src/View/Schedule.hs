@@ -7,6 +7,7 @@
 
 module View.Schedule where
 
+import           Bootstrap.Popover           (popoverDismissable)
 import           Finance.DayOf               (DayOfWeek (Sun),
                                               prettyPrintDayOfWeek)
 import           Finance.Schedule            (Repeating (..),
@@ -107,12 +108,26 @@ repeatingEdit Repeating{..} =
               , onCheckM checkedSkipping
               , className "form-check-input"
               ]
-      , label [className "form-check-label"] ["Skips Intervals?"] -- FIXME add help note
+      , label [className "form-check-label"]
+        [ "Skips Intervals? "
+        , popoverDismissable
+          "Skipping"
+          "If you'd like to say \"I get paid every two weeks\", or \"I buy gas every 4 days\", then you'll need to <em>skip</em> some of the intervals you're applying on your finance plan."
+          [className "badge rounded-pill bg-light text-dark"]
+          ["?"]
+        ]
       ]
     ] <> case repeatingSkipping of
         Nothing -> []
         Just (sDay,sTimes) ->
-          [ label_ ["Starting Day:"] -- FIXME add help note
+          [ label_
+            [ "Reference Date: "
+            , popoverDismissable
+              "Date of Reference for Skipped Intervals"
+              "It's easy to say something like \"get paid every other week\", but in <em>reference</em> to what week? This is the date we're concerned with &mdash; if we get paid \"every other week\", what is the first week payment actually occurs?"
+              [className "badge rounded-pill bg-light text-dark"]
+              ["?"]
+            ]
           , onSum (#repeatingSkipping . _Just . _1) (dayEdit sDay) -- FIXME add validation / labels
           , label_ ["Number of Skips per Interval:"]
           , let changedSkipping t = case readMaybe (T.unpack t) of
@@ -142,7 +157,14 @@ repeatingEdit Repeating{..} =
               , onCheckM checkedBegin
               , className "form-check-input"
               ]
-      , label [className "form-check-label"] ["Has Limiting Start Date?"]
+      , label [className "form-check-label"]
+        [ "Has Limiting Start Date? "
+        , popoverDismissable
+          "Start Date for Finance Plan"
+          "This gives us a method for saying something like \"I'll receive income starting at a specific date\" &mdash; that date can be supplied here to <em>delimit</em> finance plans."
+          [className "badge rounded-pill bg-light text-dark"]
+          ["?"]
+        ]
       ]
     , case repeatingBegin of
         Nothing -> ""
@@ -162,7 +184,14 @@ repeatingEdit Repeating{..} =
               , onCheckM checkedEnd
               , className "form-check-input"
               ]
-      , label [className "form-check-label"] ["Has Limiting End Date?"] -- FIXME add help tooltips
+      , label [className "form-check-label"]
+        [ "Has Limiting End Date? "
+        , popoverDismissable
+          "End Date for Finance Plan"
+          "This gives us a method for saying something like \"I'm making payments up until some date\" &mdash; that date can be supplied here to <em>delimit</em> finance plans."
+          [className "badge rounded-pill bg-light text-dark"]
+          ["?"]
+        ]
       ]
     , case repeatingEnd of
         Nothing -> ""
