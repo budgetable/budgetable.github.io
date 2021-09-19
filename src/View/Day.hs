@@ -2,12 +2,18 @@
 
 module View.Day where
 
-import           Prelude            hiding (div)
+-- import View.Day.Modal (datePicker)
+
 import           Shpadoinkle        (Html, text)
+-- import Shpadoinkle.Continuation (pur)
 import           Shpadoinkle.Html   (className, div, input', label_, onInput,
                                      onOption, option, placeholder, select,
                                      selected, step, type', value)
+-- import           Shpadoinkle.Html   (className, div, input', label_, onInput,
+--                                      onOption, option, placeholder, select,
+--                                      selected, step, type', value, i', textProperty, styleProp, button)
 
+import           Prelude            hiding (div)
 import qualified Data.Text          as T
 import           Data.Time.Calendar (Day, fromGregorian, gregorianMonthLength,
                                      toGregorian)
@@ -109,19 +115,15 @@ dayEdit day = div [className "row"]
   --   [ button
   --     [ className "btn btn-secondary"
   --     , styleProp [("margin-top","1.5em")]
-  --     , textProperty "data-bs-toggle" ("modal" :: Text)
-  --     , textProperty "data-bs-target" ("#dialog-date" :: Text)
+  --     , textProperty "data-bs-toggle" ("modal" :: T.Text)
+  --     , textProperty "data-bs-target" ("#dialog-date" :: T.Text)
   --     ]
   --     [i' [className "far fa-calendar-alt"]]
-  --   , modal
-  --     []
-  --     "dialog-date"
-  --     "Pick a Date"
-  --     [
-  --     ]
-  --     (const [])
+  --   , let handlePickedDay :: Day -> JSM ()
+  --         handlePickedDay = pur . const
+  --     in  datePicker day handlePickedDay "dialog-date"
   --   ]
-  -- FIXME can't make a date picker right now
+    -- FIXME can't make a date picker right now
   ]
   where
     (y,m,d) = toGregorian day

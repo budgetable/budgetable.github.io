@@ -20,6 +20,7 @@ library
       View.Account
       View.Balances
       View.Day
+      View.Day.Modal
       View.Dollar
       View.Plan
       View.Interest
@@ -29,6 +30,7 @@ library
   build-depends:
       base ^>=4.12.0.0
     , Shpadoinkle
+    , Shpadoinkle-backend-snabbdom
     , Shpadoinkle-console
     , Shpadoinkle-html
     , Shpadoinkle-lens
@@ -42,9 +44,11 @@ library
     , deepseq
     , generic-lens
     , ghcjs-base
+    , ghcjs-dom
     , jsaddle
     , lens == 4.17.1
     , scientific
+    , stm
     , text
     , time == 1.8.0.2
     , unliftio
