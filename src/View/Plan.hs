@@ -295,4 +295,10 @@ financePlanView (FinancePlan t s v note) = div [className "row finance-plan"]
   ]
   where
     arrow = div [className "col-1"] . (: []) $ "&#8594;"
-    centered = div [className "col", styleProp [("text-align", "center")]]
+    centered = div
+      [ className "col"
+      , styleProp
+        [ ("text-align", "center")
+        , ("overflow-x", "auto")
+        ]
+      ]
