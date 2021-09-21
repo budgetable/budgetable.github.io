@@ -2,21 +2,18 @@
 
 module View.Day where
 
-import View.Day.Modal (datePicker)
+import           View.Day.Modal     (datePicker)
 
 import           Shpadoinkle        (Html, text)
--- import Shpadoinkle.Continuation (pur)
--- import           Shpadoinkle.Html   (className, div, input', label_, onInput,
---                                      onOption, option, placeholder, select,
---                                      selected, step, type', value)
-import           Shpadoinkle.Html   (className, div, input', label_, onInput,
-                                     onOption, option, placeholder, select,
-                                     selected, step, type', value, i', textProperty, styleProp, button)
+import           Shpadoinkle.Html   (button, className, div, i', input', label_,
+                                     onInput, onOption, option, placeholder,
+                                     select, selected, step, styleProp,
+                                     textProperty, type', value)
 
-import           Prelude            hiding (div)
 import qualified Data.Text          as T
 import           Data.Time.Calendar (Day, fromGregorian, gregorianMonthLength,
                                      toGregorian)
+import           Prelude            hiding (div)
 import           Text.Read          (readMaybe)
 
 
@@ -64,8 +61,8 @@ unsafeValueToMonthPicker x = case x of
   12 -> Dec
   _  -> error $ "Value is not proper range (1-12): " <> show x
 
-dayEdit :: Day -> Html m Day
-dayEdit day = div [className "row"]
+dayEdit :: T.Text -> Day -> Html m Day
+dayEdit ident day = div [className "row"]
   [ div [className "col"] . (: []) $ div [className "form-group"]
     [ label_ ["Year:"]
     , let changedYear t oldDay =
@@ -116,12 +113,11 @@ dayEdit day = div [className "row"]
       [ className "btn btn-secondary"
       , styleProp [("margin-top","1.5em")]
       , textProperty "data-bs-toggle" ("modal" :: T.Text)
-      , textProperty "data-bs-target" ("#dialog-date" :: T.Text)
+      , textProperty "data-bs-target" ("#dialog-datepicker-" <> ident)
       ]
       [i' [className "far fa-calendar-alt"]]
-    , datePicker "dialog-date" day
+    , datePicker ("dialog-datepicker-" <> ident) day
     ]
-    -- FIXME can't make a date picker right now
   ]
   where
     (y,m,d) = toGregorian day

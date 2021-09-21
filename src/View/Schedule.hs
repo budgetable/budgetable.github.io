@@ -61,8 +61,8 @@ isRepeatingPickedDifferent r p = case (r,p) of
   (RepeatingYearly _, PickerRepeatingYearly)   -> False
   _                                            -> True
 
-scheduleEdit :: forall m. MonadIO m => Schedule -> [Html m Schedule]
-scheduleEdit s =
+scheduleEdit :: forall m. MonadIO m => T.Text -> Schedule -> [Html m Schedule]
+scheduleEdit ident s =
   [ div [className "col-md-2"] . (: []) $ div [className "form-check form-switch"]
     [ input'
       [ type' "checkbox"
@@ -82,17 +82,17 @@ scheduleEdit s =
           pure . const $ DateSchedule today
     schedule = case s of
       DateSchedule day ->
-        [div [className "col-md-10"] . (: []) $ onSum #_DateSchedule (dayEdit day)]
+        [div [className "col-md-10"] . (: []) $ onSum #_DateSchedule (dayEdit ("date-schedule-" <> ident) day)]
       RepeatingSchedule r ->
-        map (onSum #_RepeatingSchedule) (repeatingEdit r)
+        map (onSum #_RepeatingSchedule) (repeatingEdit ident r)
 
 scheduleView :: Schedule -> Html m a
 scheduleView s = case s of
   RepeatingSchedule r -> repeatingView r
   DateSchedule day    -> div_ . (: []) . text $ "once on " <> T.pack (show day)
 
-repeatingEdit :: forall m. MonadIO m => Repeating -> [Html m Repeating]
-repeatingEdit Repeating{..} =
+repeatingEdit :: forall m. MonadIO m => T.Text -> Repeating -> [Html m Repeating]
+repeatingEdit ident Repeating{..} =
   [ div [className "col-md-10"] . (: []) . div [className "row"] $
       onRecord #repeatingInterval <$> repeatingIntervalEdit repeatingInterval
   , div [className "col-12"] $
@@ -128,7 +128,7 @@ repeatingEdit Repeating{..} =
               [className "badge rounded-pill bg-light text-dark"]
               ["?"]
             ]
-          , onSum (#repeatingSkipping . _Just . _1) (dayEdit sDay) -- FIXME add validation / labels
+          , onSum (#repeatingSkipping . _Just . _1) (dayEdit ("repeating-skipping-" <> ident) sDay) -- FIXME add validation / labels
           , label_ ["Number of Skips per Interval:"]
           , let changedSkipping t = case readMaybe (T.unpack t) of
                   Nothing -> id
@@ -168,7 +168,7 @@ repeatingEdit Repeating{..} =
       ]
     , case repeatingBegin of
         Nothing -> ""
-        Just b  -> onSum (#repeatingBegin . _Just) (dayEdit b)
+        Just b  -> onSum (#repeatingBegin . _Just) (dayEdit ("repeating-begin-" <> ident) b)
     ]
   , div [className "col-12"]
     [ div [className "form-check form-switch"]
@@ -195,7 +195,7 @@ repeatingEdit Repeating{..} =
       ]
     , case repeatingEnd of
         Nothing -> ""
-        Just b  -> onSum (#repeatingEnd . _Just) (dayEdit b)
+        Just b  -> onSum (#repeatingEnd . _Just) (dayEdit ("repeating-end-" <> ident) b)
     ]
   ]
 

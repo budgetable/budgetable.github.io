@@ -69,9 +69,10 @@ financePlanEdit :: forall m
                  . MonadJSM m
                 => Accounts
                 -> Debouncer m T.Text
+                -> Text
                 -> FinancePlan
                 -> Html m FinancePlan
-financePlanEdit accounts debouncer FinancePlan{..} = div [className "row finance-plan-details"] $
+financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row finance-plan-details"] $
   [ div [className "row"] $
     let viewFinancePlan = map (onRecord #financePlanType) $ case financePlanType of
           FinancePlanTypeTransfer t ->
@@ -129,7 +130,7 @@ financePlanEdit accounts debouncer FinancePlan{..} = div [className "row finance
             [ className "row finance-plan-schedule"
             , styleProp $ [("padding","0.5em 0")] <> [("border-top", "solid 5px #fff") | idx > 0]
             ] $
-          (onSum (ix idx) <$> scheduleEdit s) <> listButtons
+          (onSum (ix idx) <$> scheduleEdit (ident <> T.pack (show idx)) s) <> listButtons
           where
             modalIdent = "dialog-finance-plan-schedule-delete-" <> T.pack (show idx)
             listButtons

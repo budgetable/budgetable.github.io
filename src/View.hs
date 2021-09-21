@@ -246,7 +246,7 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
   , section_
     [ h2_ ["Forecast"]
     , h4_ ["Start Date"]
-    , onRecord #startDate $ dayEdit startDate
+    , onRecord #startDate $ dayEdit "forecast" startDate
     , div [className "row"]
       [ div [className "col"] . (: []) $ div [className "form-group"]
         [ label_ ["Interval:"]
@@ -335,7 +335,7 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
         itemFinancePlansEdit idx (f,isEditable) = div [className "row finance-plan"]
           [ div [className "col-12 col-lg-11"] . (: []) $
               if isEditable
-              then onSum (ix idx . _1) (financePlanEdit balancesSaved debouncer f)
+              then onSum (ix idx . _1) (financePlanEdit balancesSaved debouncer (T.pack (show idx)) f)
               else financePlanView f
           , div [className "col-12 col-lg-1"] $
             [ div [className "row"] . (: []) . div [className "col"] . (: []) $

@@ -1,4 +1,13 @@
-{-# LANGUAGE DeriveGeneric, TupleSections, RecordWildCards, OverloadedStrings, ExtendedDefaultRules, OverloadedLabels, RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE
+    DeriveGeneric
+  , TupleSections
+  , RecordWildCards
+  , OverloadedStrings
+  , ExtendedDefaultRules
+  , OverloadedLabels
+  , RankNTypes
+  , ScopedTypeVariables
+  #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 module View.Day.Modal where
@@ -117,6 +126,7 @@ data ModalState = ModalState
   { year :: Integer
   , month :: Int
   , day :: Int
+  , pickedDay :: Day
   } deriving (Show, Eq, Generic)
 instance NFData ModalState
 
@@ -134,7 +144,7 @@ datePicker ident today =
       setId elm ("container-" <> ident)
       model <- newTVarIO $
         let (y,m,d) = toGregorian today
-        in  ModalState y m d
+        in  ModalState y m d today
       raw <- RawNode <$> toJSVal elm
       nextDayVar <- newEmptyTMVarIO
       _ <- forkIO $ do
@@ -168,9 +178,9 @@ datePicker ident today =
             [ div [className "col-auto"] . (: []) $
                 button
                   [ className "btn btn-secondary"
-                  , onClick $ \(ModalState y' m' d') ->
+                  , onClick $ \(ModalState y' m' d' today') ->
                       let (y'', m'') = prevMonth (y',m')
-                      in  ModalState y'' m'' d'
+                      in  ModalState y'' m'' d' today'
                   ] ["&#8592;"]
             , div [className "col", styleProp [("text-align","center")]]
               [ text $ case month of
@@ -191,9 +201,9 @@ datePicker ident today =
             , div [className "col-auto"] . (: []) $
                 button
                   [ className "btn btn-secondary"
-                  , onClick $ \(ModalState y' m' d') ->
+                  , onClick $ \(ModalState y' m' d' today') ->
                       let (y'', m'') = nextMonth (y',m')
-                      in  ModalState y'' m'' d'
+                      in  ModalState y'' m'' d' today'
                   ] ["&#8594;"]
             ]
           , div [className "row"] $
@@ -214,19 +224,27 @@ datePicker ident today =
               button
               [ className $
                 let btnType
-                      | inMonth = "btn-"
+                      | not inMonth = "btn-"
                       | otherwise = "btn-outline-"
-                in  "btn " <> btnType <> (if d == day then "primary" else "secondary")
+                in  "btn "
+                    <> btnType
+                    <> ( if fromGregorian year month d == pickedDay
+                         then "primary" else "secondary"
+                       )
               , dismiss
               , onClickM $ do
                   liftJSM . atomically . putTMVar nextDayVar $ fromGregorian year month d
                   pure $
-                    if inMonth then #day .~ d
-                    else if d < 15
-                    then let (y',m') = prevMonth (year,month)
-                         in  (#year .~ y') . (#month .~ m') . (#day .~ d)
-                    else let (y',m') = nextMonth (year,month)
-                         in  (#year .~ y') . (#month .~ m') . (#day .~ d)
+                    if inMonth
+                    then
+                      let newDay = fromGregorian year month d
+                      in  (#day .~ d) . (#pickedDay .~ newDay)
+                    else
+                      let (y',m')
+                            | d < 15 = prevMonth (year,month)
+                            | otherwise = nextMonth (year,month)
+                          newDay = fromGregorian y' m' d
+                      in  (#year .~ y') . (#month .~ m') . (#day .~ d) . (#pickedDay .~ newDay)
               ] [text . T.pack $ show d]
           where
             dismiss = textProperty "data-bs-dismiss" "modal"
