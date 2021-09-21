@@ -9,6 +9,7 @@ module Main where
 import           Chart                         (ChartData, InitialChart (..))
 import           Model                         (batchComputed, decodeFromHash,
                                                 emptyModel)
+import           Utils.ChartChange             (chartChangeEq)
 import           View                          (view)
 
 import           Shpadoinkle                   (JSM, shpadoinkle)
@@ -16,9 +17,9 @@ import           Shpadoinkle.Backend.Snabbdom  (runSnabbdom, stage)
 import           Shpadoinkle.Continuation      (shouldUpdate)
 import           Shpadoinkle.Html              (debounceRaw)
 import           Shpadoinkle.Html.LocalStorage (getStorage, setStorage)
-import           Shpadoinkle.Run               (live, runJSorWarp)
+import           Shpadoinkle.Run               (runJSorWarp)
 
-import           Control.Monad                 (void, when)
+import           Control.Monad                 (unless, void)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import           Data.Aeson                    (toJSON)
 import           Data.Generics.Labels          ()
@@ -29,7 +30,8 @@ import qualified Data.Text                     as T
 import           Data.Time.Clock               (getCurrentTime, utctDay)
 import           Language.Javascript.JSaddle   (JSVal, fromJSValUnchecked,
                                                 toJSVal)
-import           UnliftIO                      (newTVarIO, readTVarIO)
+import           UnliftIO                      (atomically, newTVarIO,
+                                                readTVarIO, writeTVar)
 import           UnliftIO.Concurrent           (forkIO, threadDelay)
 
 
@@ -71,47 +73,52 @@ getHrefWithoutHash = T.takeWhile (/= '#') <$> (fromJSValUnchecked =<< getHref')
 app :: JSM ()
 app = do
   today <- utctDay <$> liftIO getCurrentTime
+  -- get initial state
   initialState <- do
+    -- decode from URL fragment
     mHash <- fmap First $ do
       mHash' <- decodeFromHash =<< getHash
       case mHash' of
         Nothing -> pure ()
         Just _  -> resetHash
       pure mHash'
+    -- fetch from local storage
     mStored <- First <$> getStorage "budgetable"
     let justEmptyModel = First . Just $ emptyModel today
     pure . fromJust . getFirst $ mHash <> mStored <> justEmptyModel
   model <- newTVarIO initialState
+  modelOldVar <- newTVarIO initialState
   debouncer <- debounceRaw 1
   currentHref <- getHrefWithoutHash
-  shpadoinkle id runSnabbdom model (view today currentHref debouncer) stage
+  progressVar <- newTVarIO (7,7)
+  shpadoinkle id runSnabbdom model (view today currentHref debouncer progressVar) stage
 
   threadDelay 500
 
+  -- build chart
   context <- getContext
-  let initialChartData :: ChartData
-      initialChartData = batchComputed initialState
-  chartDataVar <- newTVarIO initialChartData
+  (initialChartData :: ChartData) <- batchComputed initialState progressVar
   let initialChart :: InitialChart
       initialChart = InitialChart initialChartData
   chart <- newChart context =<< toJSVal (toJSON initialChart)
   initializePopovers
   setBadgeTextColor
+  -- go is called every time the state changes
   let go () newState = do
+        -- store in local storage
         setStorage "budgetable" newState
         threadDelay 500
-        let newChartData = batchComputed newState
-        oldChartData <- readTVarIO chartDataVar
-        when (newChartData /= oldChartData) $ do
+        oldState <- readTVarIO modelOldVar
+        -- only assign new chart data when the model would cause different data
+        unless (oldState `chartChangeEq` newState) $ do
+          -- get new chart data
+          (newChartData :: ChartData) <- batchComputed newState progressVar
           assignChartData chart =<< toJSVal (toJSON newChartData)
           updateChart chart
         initializePopovers
         setBadgeTextColor
+        atomically $ writeTVar modelOldVar newState
   void $ forkIO $ shouldUpdate go () model
-
-
-dev :: IO ()
-dev = live 8080 app
 
 
 main :: IO ()

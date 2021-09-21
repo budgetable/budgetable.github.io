@@ -23,8 +23,10 @@ library
       View.Day.Modal
       View.Dollar
       View.Plan
+      View.Progress
       View.Interest
       View.Schedule
+      Utils.ChartChange
       Utils.List
   hs-source-dirs:      src
   build-depends:

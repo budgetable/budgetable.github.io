@@ -10,6 +10,7 @@ import           Finance.Account      (AccountAux (..), AccountId,
                                        Accounts)
 import           Finance.Dollar       (Dollar)
 import           Finance.Schedule     (Schedulable (..), Schedule, defSchedule)
+import           Utils.ChartChange    (CausesChartChange (..))
 
 import           Control.DeepSeq      (NFData)
 import           Control.Lens         ((%~), (.~))
@@ -36,6 +37,8 @@ instance NFData Transfer
 instance Binary Transfer
 instance Default Transfer where
   def = Transfer def def def def
+instance CausesChartChange Transfer where
+  chartChangeEq x y = x == y
 
 -- | Genesis of value for accounts
 data Income = Income
@@ -46,6 +49,8 @@ instance NFData Income
 instance Binary Income
 instance Default Income where
   def = Income def def
+instance CausesChartChange Income where
+  chartChangeEq x y = x == y
 
 -- | Burning of value for accounts
 data Cost = Cost
@@ -56,6 +61,8 @@ instance NFData Cost
 instance Binary Cost
 instance Default Cost where
   def = Cost def def
+instance CausesChartChange Cost where
+  chartChangeEq x y = x == y
 
 data FinancePlanType
   = FinancePlanTypeTransfer Transfer
@@ -66,6 +73,8 @@ instance NFData FinancePlanType
 instance Binary FinancePlanType
 instance Default FinancePlanType where
   def = FinancePlanTypeTransfer def
+instance CausesChartChange FinancePlanType where
+  chartChangeEq x y = x == y
 
 data FinancePlan = FinancePlan
   { financePlanType     :: FinancePlanType -- ^ type of the financial plan
@@ -77,6 +86,13 @@ instance NFData FinancePlan
 instance Binary FinancePlan
 instance Schedulable FinancePlan where
   isApplicableOn (FinancePlan _ s _ _) d = any (`isApplicableOn` d) s
+instance CausesChartChange FinancePlan where
+  chartChangeEq
+    (FinancePlan xType xSchedule xValue _)
+    (FinancePlan yType ySchedule yValue _)
+    = xType `chartChangeEq` yType
+    && xSchedule `chartChangeEq` ySchedule
+    && xValue `chartChangeEq` yValue
 instance ApplyTransaction FinancePlan where
   applyTransaction balances FinancePlan{financePlanType, financePlanValue = x} = case financePlanType of
     FinancePlanTypeTransfer (Transfer f faux t taux) -> case (Map.lookup f balances, Map.lookup t balances) of

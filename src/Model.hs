@@ -10,8 +10,9 @@ import           Finance                     (balancesOverTime, everyMonth,
 import           Finance.Account             (AccountAux (accountAuxColor),
                                               AccountId, Accounts)
 import           Finance.Plan                (FinancePlan)
+import           Utils.ChartChange           (CausesChartChange (..))
 
-import           Control.DeepSeq             (NFData)
+import           Control.DeepSeq             (NFData, deepseq)
 import           Control.Lens                ((^.))
 import           Control.Lens.Tuple          (_3)
 import           Control.Monad               ((<=<))
@@ -20,7 +21,9 @@ import qualified Data.Binary                 as B
 import qualified Data.ByteString             as BS
 import qualified Data.ByteString.Base64      as BS64
 import qualified Data.ByteString.Lazy        as LBS
+import           Data.Foldable               (foldlM)
 import qualified Data.Map                    as Map
+import qualified Data.Set                    as Set
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
 import qualified Data.Text.Encoding          as T
@@ -28,7 +31,9 @@ import           Data.Time.Calendar          (Day)
 import           GHC.Generics                (Generic)
 import qualified JavaScript.Array.Internal   as A
 import qualified JavaScript.TypedArray       as TA
-import           Language.Javascript.JSaddle (fromJSValUnchecked, toJSVal)
+import           Language.Javascript.JSaddle (MonadJSM, fromJSValUnchecked,
+                                              toJSVal)
+import           UnliftIO.STM                (TVar, atomically, writeTVar)
 
 #ifndef ghcjs_HOST_OS
 deflatePako :: TA.Uint8Array -> IO TA.Uint8Array
@@ -54,6 +59,8 @@ data ComputeBatchPicker
   deriving (Eq, Ord, Show, Read, Generic, Enum, Bounded)
 instance NFData ComputeBatchPicker
 instance Binary ComputeBatchPicker
+instance CausesChartChange ComputeBatchPicker where
+  chartChangeEq x y = x == y
 
 data Model = Model
   { balancesInEdit  :: [(AccountId, AccountAux)]
@@ -65,6 +72,17 @@ data Model = Model
   } deriving (Eq, Ord, Show, Read, Generic)
 instance NFData Model
 instance Binary Model
+instance CausesChartChange Model where
+  chartChangeEq
+    (Model _ xSaved xStartDate xFinancePlans xNumberToCompute xComputeBatch)
+    (Model _ ySaved yStartDate yFinancePlans yNumberToCompute yComputeBatch)
+    = chartChangeEq xSaved ySaved
+    && chartChangeEq xStartDate yStartDate
+    && ( and (zipWith (\(x,_) (y,_) -> chartChangeEq x y) xFinancePlans yFinancePlans) -- edited text
+       || Set.fromList (fst <$> xFinancePlans) == Set.fromList (fst <$> xFinancePlans) -- just reordered
+       )
+    && chartChangeEq xNumberToCompute yNumberToCompute
+    && chartChangeEq xComputeBatch yComputeBatch
 
 modelToUint8Array :: Model -> IO TA.Uint8Array
 modelToUint8Array =
@@ -123,8 +141,9 @@ emptyModel day = Model
   , computeBatch    = PickerComputeDaily
   }
 
-batchComputed :: Model -> ChartData
-batchComputed Model{..} =
+
+batchComputed :: MonadJSM m => Model -> TVar (Int, Int) -> m ChartData
+batchComputed Model{..} progressVar = do
   let computed = take numberToCompute $
         let daysComputed = balancesOverTime startDate balancesSaved (fst <$> financePlans)
         in  case computeBatch of
@@ -132,4 +151,15 @@ batchComputed Model{..} =
           PickerComputeWeekly  -> everyWeek daysComputed
           PickerComputeMonthly -> everyMonth daysComputed
           PickerComputeYearly  -> everyYear daysComputed
-  in  ChartData computed (accountAuxColor <$> balancesSaved)
+
+  atomically $ writeTVar progressVar (0, numberToCompute)
+
+  let go prevIdx nextComputed = do
+        deepseq nextComputed .
+          atomically $ writeTVar progressVar (prevIdx + 1, numberToCompute)
+        pure $ prevIdx + 1
+  _ <- foldlM go 0 computed
+
+  atomically $ writeTVar progressVar (numberToCompute, numberToCompute)
+
+  pure $ ChartData computed (accountAuxColor <$> balancesSaved)

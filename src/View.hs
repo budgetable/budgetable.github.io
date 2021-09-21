@@ -21,6 +21,7 @@ import           Utils.List                  (dropIndex, moveDown, moveUp)
 import           View.Balances               (balancesEdit)
 import           View.Day                    (dayEdit)
 import           View.Plan                   (financePlanEdit, financePlanView)
+import           View.Progress               (progress)
 
 import           Prelude                     hiding (div, log, min, span)
 import           Shpadoinkle                 (Html, MonadJSM, RawNode (..),
@@ -55,7 +56,7 @@ import           Language.Javascript.JSaddle (JSString, JSVal,
                                               textFromJSString, unsafeGetProp)
 import           System.IO.Unsafe            (unsafePerformIO)
 import           Text.Read                   (readMaybe)
-import           UnliftIO                    (atomically, newEmptyTMVarIO,
+import           UnliftIO                    (TVar, atomically, newEmptyTMVarIO,
                                               putTMVar, takeTMVar)
 
 
@@ -122,9 +123,10 @@ view :: forall m
      => Day
      -> Text
      -> Debouncer m Text
+     -> TVar (Int, Int)
      -> Model
      -> Html m Model
-view today currentHref debouncer currentModel@Model{..} = main' [className "container"]
+view today currentHref debouncer progressVar currentModel@Model{..} = main' [className "container"]
   [ header [className "row"]
     [ div [className "col-12 col-sm-6"]
       [ h1_ ["Budgetable.org"]
@@ -289,6 +291,7 @@ view today currentHref debouncer currentModel@Model{..} = main' [className "cont
           ]
         ]
       ]
+    , progress progressVar
     , canvas' [id' "graphed-income", width 400, height 400]
     ]
   , hr'_

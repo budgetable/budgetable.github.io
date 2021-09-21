@@ -7,6 +7,7 @@ module Finance.Schedule where
 
 import           Finance.DayOf               (DayOfMonth, DayOfWeek, DayOfYear,
                                               dayOfWeekNum)
+import           Utils.ChartChange           (CausesChartChange (..))
 
 import           Control.DeepSeq             (NFData)
 import           Data.Binary                 (Binary)
@@ -49,6 +50,8 @@ instance Schedulable RepeatingInterval where
       in  dayInYear == monthAndDayToDayOfYear (isLeapYear y) m d
 instance Default RepeatingInterval where
   def = RepeatingDaily
+instance CausesChartChange RepeatingInterval where
+  chartChangeEq x y = x == y
 
 data Repeating = Repeating
   { repeatingInterval :: RepeatingInterval
@@ -59,6 +62,8 @@ data Repeating = Repeating
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Repeating
 instance Binary Repeating
+instance CausesChartChange Repeating where
+  chartChangeEq x y = x == y
 instance Schedulable Repeating where
   isApplicableOn Repeating{..} day = case repeatingBegin of
     Nothing -> hasEnd
@@ -114,6 +119,8 @@ data Schedule
   deriving (Show, Read, Eq, Ord, Generic)
 instance NFData Schedule
 instance Binary Schedule
+instance CausesChartChange Schedule where
+  chartChangeEq x y = x == y
 instance Schedulable Schedule where
   isApplicableOn t day = case t of
     DateSchedule day'   -> day == day'

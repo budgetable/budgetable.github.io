@@ -1,38 +1,44 @@
-{-# LANGUAGE
-    DeriveGeneric
-  , TupleSections
-  , RecordWildCards
-  , OverloadedStrings
-  , ExtendedDefaultRules
-  , OverloadedLabels
-  , RankNTypes
-  , ScopedTypeVariables
-  #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE OverloadedLabels     #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TupleSections        #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 module View.Day.Modal where
 
-import Bootstrap.Modal (modal)
-import Shpadoinkle (Html, Continuation, baked, JSM, RawNode (..), shpadoinkle, text, liftJSM, MonadJSM, pur)
-import Shpadoinkle.Html (button, className, onClickM, div, styleProp, textProperty, onClick)
-import Shpadoinkle.Backend.Snabbdom (runSnabbdom)
+import           Bootstrap.Modal              (modal)
+import           Shpadoinkle                  (Continuation, Html, JSM,
+                                               MonadJSM, RawNode (..), baked,
+                                               liftJSM, pur, shpadoinkle, text)
+import           Shpadoinkle.Backend.Snabbdom (runSnabbdom)
+import           Shpadoinkle.Html             (button, className, div, onClick,
+                                               onClickM, styleProp,
+                                               textProperty)
 
-import Prelude hiding (div)
-import           GHCJS.DOM                               (currentDocumentUnchecked)
-import           GHCJS.DOM.Document                      (createElement)
-import           GHCJS.DOM.Element                       (setId)
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Time.Calendar (Day, toGregorian, fromGregorian, gregorianMonthLength)
-import Data.Time.Calendar.WeekDate (toWeekDate)
-import Control.DeepSeq (NFData)
-import Control.Lens ((%~), (.~))
-import Control.Lens.Tuple (_2)
-import           Data.Generics.Labels        ()
-import GHC.Generics (Generic)
-import Control.Concurrent.STM (STM, TMVar, atomically, newTVarIO, newEmptyTMVarIO, takeTMVar, putTMVar)
-import Control.Concurrent (threadDelay, forkIO)
-import Language.Javascript.JSaddle (toJSVal)
+import           Control.Concurrent           (forkIO, threadDelay)
+import           Control.Concurrent.STM       (STM, TMVar, atomically,
+                                               newEmptyTMVarIO, newTVarIO,
+                                               putTMVar, takeTMVar)
+import           Control.DeepSeq              (NFData)
+import           Control.Lens                 ((%~), (.~))
+import           Control.Lens.Tuple           (_2)
+import           Data.Generics.Labels         ()
+import           Data.Text                    (Text)
+import qualified Data.Text                    as T
+import           Data.Time.Calendar           (Day, fromGregorian,
+                                               gregorianMonthLength,
+                                               toGregorian)
+import           Data.Time.Calendar.WeekDate  (toWeekDate)
+import           GHC.Generics                 (Generic)
+import           GHCJS.DOM                    (currentDocumentUnchecked)
+import           GHCJS.DOM.Document           (createElement)
+import           GHCJS.DOM.Element            (setId)
+import           Language.Javascript.JSaddle  (toJSVal)
+import           Prelude                      hiding (div)
 
 default (Text)
 
@@ -123,9 +129,9 @@ weeksOfMonth (y,m) =
               in  inMonth <> nextMonthWeek
 
 data ModalState = ModalState
-  { year :: Integer
-  , month :: Int
-  , day :: Int
+  { year      :: Integer
+  , month     :: Int
+  , day       :: Int
   , pickedDay :: Day
   } deriving (Show, Eq, Generic)
 instance NFData ModalState
@@ -184,19 +190,19 @@ datePicker ident today =
                   ] ["&#8592;"]
             , div [className "col", styleProp [("text-align","center")]]
               [ text $ case month of
-                  1 -> "January"
-                  2 -> "February"
-                  3 -> "March"
-                  4 -> "April"
-                  5 -> "May"
-                  6 -> "June"
-                  7 -> "July"
-                  8 -> "August"
-                  9 -> "September"
+                  1  -> "January"
+                  2  -> "February"
+                  3  -> "March"
+                  4  -> "April"
+                  5  -> "May"
+                  6  -> "June"
+                  7  -> "July"
+                  8  -> "August"
+                  9  -> "September"
                   10 -> "October"
                   11 -> "November"
                   12 -> "December"
-                  _ -> error $ "Month not in range: " <> show month
+                  _  -> error $ "Month not in range: " <> show month
               ]
             , div [className "col-auto"] . (: []) $
                 button

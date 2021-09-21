@@ -6,6 +6,7 @@ module Finance.Interest where
 import           Finance.Dollar              (Dollar)
 import           Finance.Schedule            (RepeatingInterval (..),
                                               Schedulable (..))
+import           Utils.ChartChange           (CausesChartChange (..))
 
 import           Control.DeepSeq             (NFData)
 import           Data.Binary                 (Binary)
@@ -19,7 +20,7 @@ import           Text.Printf                 (PrintfArg)
 
 newtype Interest = Interest {getInterest :: Double}
   deriving (Eq, Ord, Show, Read, Num, NFData, Real, RealFrac, Fractional,
-            Generic, RealFloat, Floating, PrintfArg, Binary)
+            Generic, RealFloat, Floating, PrintfArg, Binary, CausesChartChange)
 instance Default Interest where
   def = Interest 0
 
@@ -33,6 +34,8 @@ instance Schedulable CompoundingInterest where
   isApplicableOn (CompoundingInterest _ interval) day = isApplicableOn interval day
 instance Default CompoundingInterest where
   def = CompoundingInterest def (RepeatingMonthly 1)
+instance CausesChartChange CompoundingInterest where
+  chartChangeEq x y = x == y
 
 compoundingRateWhenApplied :: CompoundingInterest -> Day -> Interest
 compoundingRateWhenApplied (CompoundingInterest rate' interval) day = case interval of

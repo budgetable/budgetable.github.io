@@ -8,6 +8,7 @@ module Finance.Account where
 import           Finance.Dollar     (Dollar, dollarPrinter)
 import           Finance.Interest   (CompoundingInterest (..),
                                      makeInterestIfApplicable)
+import           Utils.ChartChange  (CausesChartChange (..))
 
 import           Control.DeepSeq    (NFData)
 import           Data.Aeson         (FromJSON, ToJSON)
@@ -29,10 +30,6 @@ type Balances = Map AccountId Dollar
 getBalances :: Accounts -> Balances
 getBalances = fmap accountAuxBalance
 
-class NumericallyEqual a where
-  isNumericallyEqual :: a -> a -> Bool
-
-
 data AccountAux = AccountAux
   { accountAuxLimit    :: AccountLimit
   , accountAuxColor    :: Text
@@ -43,9 +40,14 @@ data AccountAux = AccountAux
   } deriving (Show, Read, Eq, Ord, Generic)
 instance NFData AccountAux
 instance Binary AccountAux
-instance NumericallyEqual AccountAux where
-  isNumericallyEqual (AccountAux l1 _ b1 i1 _ d1) (AccountAux l2 _ b2 i2 _ d2) =
-    l1 == l2 && b1 == b2 && i1 == i2 && d1 == d2
+instance CausesChartChange AccountAux where
+  chartChangeEq
+    (AccountAux xLimit _ xBalance xInterest _ xDisabled)
+    (AccountAux yLimit _ yBalance yInterest _ yDisabled)
+    = xLimit `chartChangeEq` yLimit
+    && xBalance `chartChangeEq` yBalance
+    && xInterest `chartChangeEq` yInterest
+    && xDisabled `chartChangeEq` yDisabled
 instance Default AccountAux where
   def = AccountAux
     { accountAuxLimit    = def
@@ -82,12 +84,12 @@ instance NFData AccountLimit
 instance Binary AccountLimit
 instance Default AccountLimit where
   def = NoRestriction
+instance CausesChartChange AccountLimit where
+  chartChangeEq x y = x == y
 
 -- | An account with a unique identifier
 newtype AccountId = AccountId {getAccountId :: Text}
-  deriving (Show, Read, Eq, Ord, Generic, NFData, IsString, ToJSON, FromJSON, Binary)
-instance NumericallyEqual AccountId where
-  isNumericallyEqual (AccountId x) (AccountId y) = x == y
+  deriving (Show, Read, Eq, Ord, Generic, NFData, IsString, ToJSON, FromJSON, Binary, CausesChartChange)
 instance Default AccountId where
   def = ""
 

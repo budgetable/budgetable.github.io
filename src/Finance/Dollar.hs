@@ -6,6 +6,8 @@
 
 module Finance.Dollar where
 
+import           Utils.ChartChange    (CausesChartChange (..))
+
 import           Control.Applicative  ((<|>))
 import           Control.DeepSeq      (NFData)
 import           Data.Attoparsec.Text (Parser, char, digit, many1)
@@ -18,11 +20,11 @@ import           GHC.Generics         (Generic)
 
 -- | Money, in terms of cent (lossless compared to 'Double')
 newtype Cent = Cent {getCent :: Integer}
-  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum, NFData, Binary)
+  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum, NFData, Binary, CausesChartChange)
 
 -- | Cent, but with a prettier format
 newtype Dollar = Dollar {getDollar :: Cent}
-  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum, NFData, Binary)
+  deriving (Show, Read, Eq, Ord, Num, Generic, Integral, Real, Enum, NFData, Binary, CausesChartChange)
 instance Default Dollar where
   def = 0
 dollarPrinter :: Dollar -> Text
