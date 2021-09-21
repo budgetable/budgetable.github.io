@@ -132,7 +132,7 @@ financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row f
             ] $
           (onSum (ix idx) <$> scheduleEdit (ident <> T.pack (show idx)) s) <> listButtons
           where
-            modalIdent = "dialog-finance-plan-schedule-delete-" <> T.pack (show idx)
+            modalIdent = "dialog-finance-plan-schedule-delete-" <> ident <> T.pack (show idx)
             listButtons
               | length financePlanSchedule < 2 = []
               | otherwise =

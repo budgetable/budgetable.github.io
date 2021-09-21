@@ -117,5 +117,4 @@ dev = live 8080 app
 main :: IO ()
 main = do
   putStrLn "\nhi, my name is budgetable"
-  putStrLn "happy point of view on http://localhost:8080\n"
   runJSorWarp 8080 app
