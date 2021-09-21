@@ -2,16 +2,16 @@
 
 module View.Day where
 
--- import View.Day.Modal (datePicker)
+import View.Day.Modal (datePicker)
 
 import           Shpadoinkle        (Html, text)
 -- import Shpadoinkle.Continuation (pur)
-import           Shpadoinkle.Html   (className, div, input', label_, onInput,
-                                     onOption, option, placeholder, select,
-                                     selected, step, type', value)
 -- import           Shpadoinkle.Html   (className, div, input', label_, onInput,
 --                                      onOption, option, placeholder, select,
---                                      selected, step, type', value, i', textProperty, styleProp, button)
+--                                      selected, step, type', value)
+import           Shpadoinkle.Html   (className, div, input', label_, onInput,
+                                     onOption, option, placeholder, select,
+                                     selected, step, type', value, i', textProperty, styleProp, button)
 
 import           Prelude            hiding (div)
 import qualified Data.Text          as T
@@ -111,18 +111,16 @@ dayEdit day = div [className "row"]
             , className "form-select"
             ] (mkDay <$> [1 .. gregorianMonthLength y m])
     ]
-  -- , div [className "col-auto"]
-  --   [ button
-  --     [ className "btn btn-secondary"
-  --     , styleProp [("margin-top","1.5em")]
-  --     , textProperty "data-bs-toggle" ("modal" :: T.Text)
-  --     , textProperty "data-bs-target" ("#dialog-date" :: T.Text)
-  --     ]
-  --     [i' [className "far fa-calendar-alt"]]
-  --   , let handlePickedDay :: Day -> JSM ()
-  --         handlePickedDay = pur . const
-  --     in  datePicker day handlePickedDay "dialog-date"
-  --   ]
+  , div [className "col-auto"]
+    [ button
+      [ className "btn btn-secondary"
+      , styleProp [("margin-top","1.5em")]
+      , textProperty "data-bs-toggle" ("modal" :: T.Text)
+      , textProperty "data-bs-target" ("#dialog-date" :: T.Text)
+      ]
+      [i' [className "far fa-calendar-alt"]]
+    , datePicker "dialog-date" day
+    ]
     -- FIXME can't make a date picker right now
   ]
   where
