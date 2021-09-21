@@ -80,7 +80,9 @@ app = do
       mHash' <- decodeFromHash =<< getHash
       case mHash' of
         Nothing -> pure ()
-        Just _  -> resetHash
+        Just exists  -> do
+          resetHash
+          setStorage "budgetable" exists
       pure mHash'
     -- fetch from local storage
     mStored <- First <$> getStorage "budgetable"
