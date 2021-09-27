@@ -1,4 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 module Chart where
 
@@ -10,6 +12,8 @@ import           Data.Map           (Map)
 import qualified Data.Map           as Map
 import           Data.Text          (Text)
 import           Data.Time.Calendar (Day)
+
+default (Text)
 
 
 -- | For updating Chart.js
@@ -32,6 +36,18 @@ instance ToJSON InitialChart where
         , "title" .= object
           [ "display" .= True
           , "text" .= String "Graphed Budget"
+          ]
+        , "zoom" .= object
+          [ "pan" .= object
+            [ "enabled" .= True
+            , "mode" .= "xy"
+            ]
+          , "zoom" .= object
+            [ "wheel" .= object ["enabled" .= True]
+            , "pinch" .= object ["enabled" .= True]
+            , "mode" .= "xy"
+            , "overScaleMode" .= "y"
+            ]
           ]
         ]
       ]

@@ -33,6 +33,7 @@ import qualified JavaScript.Array.Internal   as A
 import qualified JavaScript.TypedArray       as TA
 import           Language.Javascript.JSaddle (MonadJSM, fromJSValUnchecked,
                                               toJSVal)
+import           UnliftIO.Concurrent         (threadDelay)
 import           UnliftIO.STM                (TVar, atomically, writeTVar)
 
 #ifndef ghcjs_HOST_OS
@@ -157,6 +158,7 @@ batchComputed Model{..} progressVar = do
   let go prevIdx nextComputed = do
         deepseq nextComputed .
           atomically $ writeTVar progressVar (prevIdx + 1, numberToCompute)
+        threadDelay 1
         pure $ prevIdx + 1
   _ <- foldlM go 0 computed
 
