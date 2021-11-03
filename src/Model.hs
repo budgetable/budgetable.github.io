@@ -80,7 +80,7 @@ instance CausesChartChange Model where
     = chartChangeEq xSaved ySaved
     && chartChangeEq xStartDate yStartDate
     && ( and (zipWith (\(x,_) (y,_) -> chartChangeEq x y) xFinancePlans yFinancePlans) -- edited text
-       || Set.fromList (fst <$> xFinancePlans) == Set.fromList (fst <$> xFinancePlans) -- just reordered
+       || Set.fromList (fst <$> xFinancePlans) == Set.fromList (fst <$> yFinancePlans) -- just reordered
        )
     && chartChangeEq xNumberToCompute yNumberToCompute
     && chartChangeEq xComputeBatch yComputeBatch
