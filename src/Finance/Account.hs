@@ -42,9 +42,10 @@ instance NFData AccountAux
 instance Binary AccountAux
 instance CausesChartChange AccountAux where
   chartChangeEq
-    (AccountAux xLimit _ xBalance xInterest _ xDisabled)
-    (AccountAux yLimit _ yBalance yInterest _ yDisabled)
+    (AccountAux xLimit xColor xBalance xInterest _ xDisabled)
+    (AccountAux yLimit yColor yBalance yInterest _ yDisabled)
     = xLimit `chartChangeEq` yLimit
+    && xColor `chartChangeEq` yColor
     && xBalance `chartChangeEq` yBalance
     && xInterest `chartChangeEq` yInterest
     && xDisabled `chartChangeEq` yDisabled

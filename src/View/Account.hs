@@ -105,7 +105,8 @@ accountEdit isUnique debouncer name@(AccountId nameRaw) AccountAux{..} =
             t <- fromJSValUnchecked v
             pure . pur $ const t
         , placeholder "Color"
-        , className "form-control"
+        , className "form-control color-input"
+        , styleProp [("background-color", accountAuxColor)]
         ]
       ]
     ]

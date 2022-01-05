@@ -4,7 +4,7 @@
         <title>Budgetable.org</title>
         <meta name="description" content="Open-Source Budget Visualization Software">
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y1Y9RR3GLE"></script>
-        <script data-ad-client="ca-pub-4103661590917429" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4103661590917429" crossorigin="anonymous"></script>
         <script>
          window.dataLayer = window.dataLayer || [];
          function gtag(){dataLayer.push(arguments);}
@@ -25,6 +25,20 @@
         <script type="text/javascript">
 function setBadgeTextColor() {
     [].slice.call(document.querySelectorAll('.account-label'))
+    .map(function(e){
+        var color = window.getComputedStyle(e).getPropertyValue('background-color');
+        if (color.match(/^rgb/)) {
+            color = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/);
+            var r = color[1];
+            var g = color[2];
+            var b = color[3];
+            var hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
+            var c = hsp>127.5 ? 'black' : 'white';
+            var s = e.getAttribute('style');
+            e.setAttribute('style', s === '' ? 'color:' + c : s + ';color:' + c);
+        }
+    });
+    [].slice.call(document.querySelectorAll('.color-input'))
     .map(function(e){
         var color = window.getComputedStyle(e).getPropertyValue('background-color');
         if (color.match(/^rgb/)) {
