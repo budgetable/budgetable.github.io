@@ -8,7 +8,7 @@ import           Shpadoinkle        (Html, text)
 import           Shpadoinkle.Html   (button, className, div, i', input', label_,
                                      onInput, onOption, option, placeholder,
                                      select, selected, step, styleProp,
-                                     textProperty, type', value)
+                                     textProperty, type', value, title)
 
 import qualified Data.Text          as T
 import           Data.Time.Calendar (Day, fromGregorian, gregorianMonthLength,
@@ -114,6 +114,7 @@ dayEdit ident day = div [className "row"]
       , styleProp [("margin-top","1.5em")]
       , textProperty "data-bs-toggle" ("modal" :: T.Text)
       , textProperty "data-bs-target" ("#dialog-datepicker-" <> ident)
+      , title "Pick a specific day on a calendar"
       ]
       [i' [className "far fa-calendar-alt"]]
     , datePicker ("dialog-datepicker-" <> ident) day

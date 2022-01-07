@@ -17,13 +17,14 @@ import           Prelude                  hiding (div)
 import           Shpadoinkle              (Html, MonadJSM, text)
 import           Shpadoinkle.Html         (button, checked, className, div, id',
                                            input', label, onCheck, onClick, p_,
-                                           styleProp, textProperty, type')
+                                           styleProp, textProperty, type', hr', title)
 import           Shpadoinkle.Lens         (onSum)
 
 import           Control.Lens.At          (ix)
 import           Control.Lens.Combinators (imap)
 import           Control.Lens.Tuple       (_2)
 import           Data.Generics.Labels     ()
+import           Data.List                (intersperse)
 import qualified Data.Map                 as Map
 import           Data.Text                (Text)
 import qualified Data.Text                as T
@@ -34,9 +35,11 @@ balancesEdit :: forall m
              => Debouncer m Text
              -> [(AccountId, AccountAux)]
              -> Html m [(AccountId, AccountAux)]
-balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
-  [ div [className "row d-grid", styleProp [("padding","0.5rem 0")]] [newButton]
-  ]
+balancesEdit debouncer xs =
+  div [id' "balances-edit"] $
+    intersperse (hr' [styleProp [("height", "2px")]]) (imap balanceEdit xs) <>
+    [ div [className "row d-grid", styleProp [("padding","0.5rem 0")]] [newButton]
+    ]
   where
     balanceEdit :: Int -> (AccountId, AccountAux) -> Html m [(AccountId, AccountAux)]
     balanceEdit idx (a@(AccountId aId),aux@AccountAux{accountAuxEditable}) = div [className "row account"]
@@ -54,6 +57,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                   , checked accountAuxEditable
                   , onCheck const
                   , className "form-check-input"
+                  , title $ (if accountAuxEditable then "Close" else "Open") <> " configuration menu"
                   ]
               , label [className "form-check-label"] ["Edit"]
               ]
@@ -65,6 +69,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                     [ className "btn btn-outline-danger"
                     , textProperty "data-bs-toggle" ("modal" :: Text)
                     , textProperty "data-bs-target" ("#dialog-account-delete-" <> T.pack (show idx))
+                    , title "Delete this account"
                     ]
                     ["Delete"]
                   , div [className "row d-grid"] . (: []) $
@@ -72,12 +77,14 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
                       [ className "btn btn-outline-secondary"
                       , styleProp [("margin-top","0.5em")]
                       , onClick $ moveUp idx
+                      , title "Move this account up"
                       ] ["&#8593;"]
                   , div [className "row d-grid"] . (: []) $
                     button
                       [ className "btn btn-outline-secondary"
                       , styleProp [("margin-top","0.5em")]
                       , onClick $ moveDown idx
+                      , title "Move this account down"
                       ] ["&#8595;"]
                   , modal
                     []
@@ -104,6 +111,7 @@ balancesEdit debouncer xs = div [id' "balances-edit"] $ imap balanceEdit xs <>
       button
         [ className "btn btn-secondary"
         , onClick (<> [blankAccount])
+        , title "Add a new account to your list of initial balances"
         ]
         ["Add New Account"]
 

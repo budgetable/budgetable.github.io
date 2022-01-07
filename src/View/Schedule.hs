@@ -266,7 +266,7 @@ repeatingIntervalEdit r =
             ]
       RepeatingMonthly m ->
         [ div [className "col"] . (: []) $ div [className "form-group"]
-          [ label_ ["Day:"]
+          [ label_ ["Day of Month:"]
           , input'
             [ type' "number"
             , min "1"

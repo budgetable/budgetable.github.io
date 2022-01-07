@@ -30,7 +30,7 @@ import           Shpadoinkle.Html            (button, className, disabled, div,
                                               hidden, input', label_, onClick,
                                               onClickM, onOption, option, p_,
                                               placeholder, select, selected,
-                                              styleProp, textProperty, value)
+                                              styleProp, textProperty, value, hr', title)
 import           Shpadoinkle.Lens            (onRecord, onSum)
 
 import           Control.Lens                (Lens', lens, (%~), (.~))
@@ -39,6 +39,7 @@ import           Control.Lens.Combinators    (imap)
 import           Control.Monad.IO.Class      (MonadIO (liftIO))
 import           Data.Default                (def)
 import           Data.Generics.Labels        ()
+import           Data.List                   (intersperse)
 import qualified Data.Map                    as Map
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
@@ -82,7 +83,8 @@ financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row f
           FinancePlanTypeCost t ->
             map (onSum #_FinancePlanTypeCost) (costEdit t)
     in  financePlanPicker : viewFinancePlan
-  ] <> schedules <>
+  , hr' [styleProp [("margin-top", "1em")]]
+  ] <> intersperse (hr' []) schedules <>
   [ div [className "row"]
     [ let clickedAddSchedule = do
             today <- utctDay <$> liftIO getCurrentTime
@@ -90,6 +92,7 @@ financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row f
       in  button
             [ onClickM clickedAddSchedule
             , className "btn btn-secondary"
+            , title "Add a schedule to apply this finance plan"
             ]
             ["Add Schedule"]
     ]
@@ -126,11 +129,8 @@ financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row f
       where
         scheduleEdit' :: Int -> Schedule -> Html m [Schedule]
         scheduleEdit' idx s =
-          div
-            [ className "row finance-plan-schedule"
-            , styleProp $ [("padding","0.5em 0")] <> [("border-top", "solid 5px #fff") | idx > 0]
-            ] $
-          (onSum (ix idx) <$> scheduleEdit (ident <> T.pack (show idx)) s) <> listButtons
+          div [className "row finance-plan-schedule", styleProp [("margin-bottom", "1em")]] $
+            (onSum (ix idx) <$> scheduleEdit (ident <> T.pack (show idx)) s) <> listButtons
           where
             modalIdent = "dialog-finance-plan-schedule-delete-" <> ident <> T.pack (show idx)
             listButtons
@@ -142,18 +142,21 @@ financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row f
                       , textProperty "data-bs-toggle" ("modal" :: Text)
                       , textProperty "data-bs-target" ("#" <> modalIdent)
                       , styleProp [("margin-top","0.5em")]
+                      , title "Delete the schedule for this finance plan"
                       ] ["Un-Schedule"]
                 , div [className "col-12 col-md-4 d-grid"] . (: []) $
                     button
                       [ className "btn btn-outline-secondary"
                       , styleProp [("margin-top","0.5em")]
                       , onClick $ moveUp idx
+                      , title "Move this schedule up"
                       ] ["&#8593;"]
                 , div [className "col-12 col-md-4 d-grid"] . (: []) $
                     button
                       [ className "btn btn-outline-secondary"
                       , styleProp [("margin-top","0.5em")]
                       , onClick $ moveDown idx
+                      , title "Move this schedule down"
                       ] ["&#8595;"]
                 , modal
                     []
@@ -249,10 +252,17 @@ financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row f
     accountPicker :: (AccountAux -> Bool) -> AccountId -> Html m AccountId
     accountPicker withQualifier a =
       select
-        [ value . T.pack $ show a
-        , onOption (const . read . T.unpack)
-        , className "form-select"
-        ] $
+        ( [ value . T.pack $ show a
+          , onOption (const . read . T.unpack)
+          ]
+          <>  case Map.lookup a accounts of
+                Nothing ->
+                  [ className "form-select" ]
+                Just AccountAux{accountAuxColor = bgColor} ->
+                  [ styleProp [("background-color", bgColor)]
+                  , className "form-select color-input"
+                  ]
+        ) $
         option
           [ value . T.pack . show $ fst blankAccount
           , hidden True
@@ -263,7 +273,18 @@ financePlanEdit accounts debouncer ident FinancePlan{..} = div [className "row f
             : (mkAccount <$> Map.keys (Map.filter withQualifier accounts))
       where
         mkAccount a'@(AccountId name) =
-          option [value . T.pack $ show a', selected (a' == a)] [text name]
+          option
+            ( [ value . T.pack $ show a'
+              , selected (a' == a)
+              ]
+              <>  case Map.lookup a' accounts of
+                    Nothing -> []
+                    Just AccountAux{accountAuxColor = bgColor} ->
+                      [ styleProp [("background-color", bgColor)]
+                      , className "color-input"
+                      ]
+            )
+            [text name]
 
 
 financePlanView :: FinancePlan -> Html m a

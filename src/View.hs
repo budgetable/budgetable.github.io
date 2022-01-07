@@ -30,13 +30,13 @@ import           Shpadoinkle.Continuation    (done, pur)
 import           Shpadoinkle.Html            (a, accept, button, canvas',
                                               checked, className, div, em_,
                                               footer_, h1_, h2_, h3_, h4_,
-                                              header, height, hr'_, href, id',
+                                              header, height, hr', href, id',
                                               input', label, label_, main', min,
                                               onCheck, onClick, onClickM,
                                               onOption, option, p, p_, section_,
                                               select, selected, span, step,
                                               styleProp, target, textProperty,
-                                              type', value, width)
+                                              type', value, width, title)
 import           Shpadoinkle.Lens            (onRecord, onSum)
 
 import           Control.Lens                (Lens', lens, (%~), (^.))
@@ -45,6 +45,7 @@ import           Control.Lens.Combinators    (imap)
 import           Control.Lens.Tuple          (_1, _2)
 import           Control.Monad.IO.Class      (MonadIO (liftIO))
 import           Data.Generics.Labels        ()
+import           Data.List                   (intersperse)
 import qualified Data.Map                    as Map
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
@@ -211,7 +212,7 @@ view today currentHref debouncer progressVar currentModel@Model{..} = main' [cla
                 ])
           ]
     ]
-  , hr'_
+  , hr' [styleProp [("height", "3px")]]
   , section_
     [ h3_ ["Accounts"]
     , let editBalancesLens :: Lens' Model [(AccountId, AccountAux)]
@@ -239,12 +240,12 @@ view today currentHref debouncer progressVar currentModel@Model{..} = main' [cla
                   }
       in  onRecord editBalancesLens $ balancesEdit debouncer balancesInEdit
     ]
-  , hr'_
+  , hr' [styleProp [("height", "3px")]]
   , section_
     [ h3_ ["Finance Plans"]
     , onRecord #financePlans $ listOfFinancePlansEdit financePlans
     ]
-  , hr'_
+  , hr' [styleProp [("height", "3px")]]
   , section_
     [ h2_ ["Forecast"]
     , h4_ ["Start Date"]
@@ -294,7 +295,7 @@ view today currentHref debouncer progressVar currentModel@Model{..} = main' [cla
     , progress progressVar
     , canvas' [id' "graphed-income", width 400, height 400]
     ]
-  , hr'_
+  , hr' [styleProp [("height", "3px")]]
   , footer_
     [ p [styleProp [("text-align","center")]]
       [ "Budgetable is built with the great-and-powerful "
@@ -330,9 +331,9 @@ view today currentHref debouncer progressVar currentModel@Model{..} = main' [cla
   where
     listOfFinancePlansEdit :: [(FinancePlan, Bool)] -> Html m [(FinancePlan, Bool)]
     listOfFinancePlansEdit fs = div [id' "finance-plans"] $
-      imap itemFinancePlansEdit fs <>
-      [ div [className "row d-grid", styleProp [("padding-top","0.5rem")]] [newButton]
-      ]
+      intersperse (hr' [styleProp [("height", "2px")]]) (imap itemFinancePlansEdit fs) <>
+        [ div [className "row d-grid", styleProp [("padding-top","0.5rem")]] [newButton]
+        ]
       where
         itemFinancePlansEdit :: Int -> (FinancePlan, Bool) -> Html m [(FinancePlan, Bool)]
         itemFinancePlansEdit idx (f,isEditable) = div [className "row finance-plan"]
@@ -344,7 +345,13 @@ view today currentHref debouncer progressVar currentModel@Model{..} = main' [cla
             [ div [className "row"] . (: []) . div [className "col"] . (: []) $
                 div [className "form-check form-switch"]
                 [ onSum (ix idx . _2) $
-                    input' [type' "checkbox", checked isEditable, onCheck const, className "form-check-input"]
+                    input'
+                      [ type' "checkbox"
+                      , checked isEditable
+                      , onCheck const
+                      , className "form-check-input"
+                      , title $ (if isEditable then "Close" else "Open") <> " configuration menu"
+                      ]
                 , label [className "form-check-label"] ["Edit"]
                 ]
             ]
@@ -357,18 +364,21 @@ view today currentHref debouncer progressVar currentModel@Model{..} = main' [cla
                           [ className "btn btn-outline-danger"
                           , textProperty "data-bs-toggle" ("modal" :: Text)
                           , textProperty "data-bs-target" ("#" <> dialogIdent)
+                          , title "Delete this finance plan"
                           ] ["Delete"]
                     , div [className "row d-grid"] . (: []) $
                         button
                           [ className "btn btn-outline-secondary"
                           , styleProp [("margin-top","0.5em")]
                           , onClick $ moveUp idx
+                          , title "Move this finance plan up"
                           ] ["&#8593;"]
                     , div [className "row d-grid"] . (: []) $
                         button
                           [ className "btn btn-outline-secondary"
                           , styleProp [("margin-top","0.5em")]
                           , onClick $ moveDown idx
+                          , title "Move this finance plan down"
                           ] ["&#8595;"]
                     , modal
                       []
