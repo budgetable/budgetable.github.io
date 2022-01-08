@@ -132,7 +132,9 @@ view today currentHref debouncer progressVar currentModel@Model{..} = main' [cla
     [ div [className "col-12 col-sm-6"]
       [ h1_ ["Budgetable.org"]
       , p [styleProp [("font-size","1.25rem"),("font-style","italic")]]
-        ["Open-Source Budget Visualization Software"]
+        [ a [href "https://github.com/budgetable/budgetable.github.io", target "_blank"] ["Open-Source"]
+        , " Budget Visualization Software"
+        ]
       ]
     , div [className "col-12 col-sm-6", styleProp [("text-align","right")]] $
       let alignLeft = styleProp [("text-align","left")]
